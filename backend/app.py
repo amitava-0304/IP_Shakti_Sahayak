@@ -125,44 +125,119 @@ def api_status():
     }
 
 
-@app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+def process_uploaded_document(
+    file_path,
+    filename
+):
+    """
+    Convert uploaded PDF/TXT/DOCX to text and index it in
+    ChromaDB without blocking the upload HTTP request.
+    """
+
     try:
+
+        print(
+            f"Starting upload indexing: {filename}",
+            flush=True
+        )
+
+        result = ingest_uploaded_file(
+            file_path
+        )
+
+        print(
+            f"Upload indexing finished: "
+            f"{filename} -> {result}",
+            flush=True
+        )
+
+    except Exception as error:
+
+        print(
+            f"Upload indexing failed: "
+            f"{filename} -> {repr(error)}",
+            flush=True
+        )
+
+
+@app.post("/api/upload")
+async def upload_file(
+    file: UploadFile = File(...)
+):
+
+    try:
+
         if not file.filename:
-            return {"error": "No file selected."}
 
-        safe_filename = os.path.basename(file.filename)
-        extension = os.path.splitext(safe_filename)[1].lower()
-
-        if extension not in (".pdf", ".txt", ".docx"):
             return {
-                "error": "Unsupported file type. Please upload PDF, TXT or DOCX."
+                "error":
+                    "No file selected."
             }
 
-        file_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+        safe_filename = os.path.basename(
+            file.filename
+        )
 
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        extension = os.path.splitext(
+            safe_filename
+        )[1].lower()
 
-        ingestion_result = ingest_uploaded_file(file_path)
+        if extension not in (
+            ".pdf",
+            ".txt",
+            ".docx"
+        ):
 
-        if not ingestion_result.get("success", False):
             return {
-                "message": f"File '{safe_filename}' was uploaded, but could not be indexed.",
-                "warning": ingestion_result.get("message", "Text extraction failed."),
-                "filename": safe_filename,
-                "searchable": False
+                "error":
+                    "Unsupported file type. "
+                    "Please upload PDF, TXT or DOCX."
             }
+
+        file_path = os.path.join(
+            UPLOAD_FOLDER,
+            safe_filename
+        )
+
+        with open(
+            file_path,
+            "wb"
+        ) as buffer:
+
+            shutil.copyfileobj(
+                file.file,
+                buffer
+            )
+
+        thread = threading.Thread(
+            target=process_uploaded_document,
+            args=(
+                file_path,
+                safe_filename
+            ),
+            daemon=True
+        )
+
+        thread.start()
 
         return {
-            "message": f"File '{safe_filename}' converted to text and indexed successfully.",
-            "filename": safe_filename,
-            "chunks_added": ingestion_result.get("chunks", 0),
-            "searchable": True
+            "message":
+                f"File '{safe_filename}' uploaded successfully. "
+                "Document indexing has started in background.",
+            "filename":
+                safe_filename,
+            "indexing":
+                True,
+            "searchable":
+                False
         }
 
     except Exception as error:
-        return {"error": f"Upload/indexing failed: {error}"}
+
+        return {
+            "error":
+                f"Upload failed: {error}"
+        }
 
 
 @app.post("/api/ayurveda-centres")
