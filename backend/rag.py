@@ -32,31 +32,49 @@ VECTOR_FOLDER.mkdir(
 
 
 # =========================================================
-# CHROMA
+# CHROMA CLIENT
 # =========================================================
 
 client = chromadb.PersistentClient(
     path=str(VECTOR_FOLDER)
 )
 
-main_collection = client.get_or_create_collection(
-    name=MAIN_COLLECTION
-)
 
-upload_collection = client.get_or_create_collection(
-    name=UPLOAD_COLLECTION
-)
+# =========================================================
+# ALWAYS GET A FRESH COLLECTION HANDLE
+#
+# Important:
+# ingest.py can delete + recreate the main collection.
+# A collection object created before that rebuild becomes stale
+# and raises chromadb.errors.NotFoundError.
+# =========================================================
+
+def get_main_collection():
+    return client.get_or_create_collection(
+        name=MAIN_COLLECTION
+    )
+
+
+def get_upload_collection():
+    return client.get_or_create_collection(
+        name=UPLOAD_COLLECTION
+    )
 
 
 # =========================================================
-# HELPERS
+# QUERY ONE COLLECTION
 # =========================================================
 
 def query_collection(
-    collection,
+    collection_name,
     query,
     top_k
 ):
+
+    if collection_name == MAIN_COLLECTION:
+        collection = get_main_collection()
+    else:
+        collection = get_upload_collection()
 
     count = collection.count()
 
@@ -143,7 +161,7 @@ def search_documents(
 
     combined.extend(
         query_collection(
-            main_collection,
+            MAIN_COLLECTION,
             query,
             top_k
         )
@@ -151,7 +169,7 @@ def search_documents(
 
     combined.extend(
         query_collection(
-            upload_collection,
+            UPLOAD_COLLECTION,
             query,
             top_k
         )
@@ -160,7 +178,6 @@ def search_documents(
     if not combined:
         return []
 
-    # Keep rows with valid distance first.
     combined.sort(
         key=lambda item: (
             item.get("distance")
@@ -198,7 +215,6 @@ def search_documents(
         ]
 
     deduplicated = []
-
     seen = set()
 
     for item in combined:
@@ -258,6 +274,11 @@ def search_documents(
 # =========================================================
 
 def get_collection_counts():
+
+    # Always reacquire collection objects.
+    # This avoids stale UUID errors after a rebuild.
+    main_collection = get_main_collection()
+    upload_collection = get_upload_collection()
 
     return {
         "main": main_collection.count(),
