@@ -15,11 +15,7 @@ local_pdfs/
 chroma_db/
 uploaded_files/
 uploaded_text/
-local_pdfs/
-*.pdf
 .env
 venv/
 .venv/
-chroma_db/
-uploaded_files/
-uploaded_text/
+
