@@ -7,11 +7,19 @@ __pycache__/
 *.pyd
 .DS_Store
 
-# Local runtime data
+# Permanent source PDFs stay only on your computer.
+local_pdfs/
+*.pdf
+
+# Runtime data
 chroma_db/
 uploaded_files/
-
-# Editor
-.vscode/
-.idea/
-data/ayurveda/Ayurveda_A_Focus_on_Research__Development.pd
+uploaded_text/
+local_pdfs/
+*.pdf
+.env
+venv/
+.venv/
+chroma_db/
+uploaded_files/
+uploaded_text/
