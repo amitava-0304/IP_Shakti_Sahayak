@@ -1,0 +1,13 @@
+IP SAKTI Sahayak - Traditional Knowledge Sources
+================================================
+
+Traditional Knowledge Digital Library (TKDL)
+Official website:
+https://www.tkdl.res.in/
+
+CSIR TKDL:
+https://www.csir.res.in/en/documents/tkdl
+
+IMPORTANT:
+The full TKDL database is available to Patent Offices under the TKDL Access Agreement.
+Do not scrape or download the restricted TKDL database.

@@ -1,0 +1,3310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>IP-SHAKTI Sahayak</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            min-height: 100vh;
+            color: #263238;
+            background:
+                linear-gradient(
+                    135deg,
+                    #eaf4ff,
+                    #f8efff,
+                    #effff6
+                );
+        }
+
+        /* =================================================
+           MAIN APP
+        ================================================= */
+
+        .app-container {
+            width: 95%;
+            max-width: 1250px;
+            margin: 25px auto;
+            background: white;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow:
+                0 15px 45px
+                rgba(0, 0, 0, 0.13);
+        }
+
+        /* =================================================
+           HEADER
+        ================================================= */
+
+        .header {
+            padding: 30px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            background:
+                linear-gradient(
+                    120deg,
+                    #304ffe,
+                    #6a1b9a,
+                    #00897b
+                );
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 38px;
+        }
+
+        .header p {
+            margin: 8px 0 0;
+            font-size: 18px;
+        }
+
+        /* =================================================
+           LANGUAGE
+        ================================================= */
+
+        .language-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .language-box select {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        /* =================================================
+           MAIN CONTENT
+        ================================================= */
+
+        .main {
+            padding: 30px;
+        }
+
+        /* =================================================
+           WELCOME
+        ================================================= */
+
+        .welcome {
+            text-align: center;
+            padding: 25px 10px;
+        }
+
+        .welcome h2 {
+            color: #283593;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .welcome p {
+            color: #607d8b;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        /* =================================================
+           FEATURE CARDS
+        ================================================= */
+
+        .features {
+            display: grid;
+            grid-template-columns:
+                repeat(
+                    auto-fit,
+                    minmax(220px, 1fr)
+                );
+            gap: 18px;
+            margin: 25px 0;
+        }
+
+        .feature-card {
+            padding: 22px;
+            border-radius: 18px;
+            border: 1px solid #e0e7ff;
+            background:
+                linear-gradient(
+                    145deg,
+                    #ffffff,
+                    #f6f8ff
+                );
+            box-shadow:
+                0 6px 18px
+                rgba(70, 90, 180, 0.08);
+            transition: 0.25s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                0 10px 24px
+                rgba(70, 90, 180, 0.14);
+        }
+
+        .feature-card h3 {
+            color: #5e35b1;
+            margin-top: 0;
+        }
+
+        .feature-card p {
+            line-height: 1.6;
+            color: #546e7a;
+        }
+
+        /* =================================================
+           QUICK QUESTIONS
+        ================================================= */
+
+        .quick-section {
+            margin: 30px 0;
+        }
+
+        .quick-section h3 {
+            color: #283593;
+            font-size: 22px;
+        }
+
+        .quick-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .quick-btn {
+            border: none;
+            border-radius: 25px;
+            padding: 12px 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 15px;
+            background:
+                linear-gradient(
+                    135deg,
+                    #3d7df2,
+                    #6a45be
+                );
+            box-shadow:
+                0 4px 12px
+                rgba(63, 81, 181, 0.15);
+            transition: 0.2s;
+        }
+
+        .quick-btn:hover {
+            opacity: 0.94;
+            transform: translateY(-2px);
+        }
+
+        /* =================================================
+           UPLOAD
+        ================================================= */
+
+        .upload-section {
+            margin: 30px 0;
+            padding: 25px;
+            text-align: center;
+            border-radius: 20px;
+            border:
+                2px dashed #64b5f6;
+            background:
+                linear-gradient(
+                    135deg,
+                    #e3f2fd,
+                    #f3e5f5
+                );
+        }
+
+        .upload-section h3 {
+            margin-top: 0;
+            color: #1565c0;
+        }
+
+        #fileUpload {
+            width: 100%;
+            max-width: 450px;
+            padding: 12px;
+            background: white;
+            border-radius: 10px;
+            border:
+                1px solid #bbdefb;
+        }
+
+        .upload-btn,
+        .clear-btn {
+            margin-top: 15px;
+            border: none;
+            border-radius: 12px;
+            padding: 13px 25px;
+            cursor: pointer;
+            color: white;
+            font-size: 16px;
+        }
+
+        .upload-btn {
+            background:
+                linear-gradient(
+                    135deg,
+                    #00b894,
+                    #00c853
+                );
+        }
+
+        .clear-btn {
+            margin-left: 8px;
+            background:
+                linear-gradient(
+                    135deg,
+                    #78909c,
+                    #546e7a
+                );
+        }
+
+        /* =================================================
+           QUESTION SECTION
+        ================================================= */
+
+        .question-section {
+            margin-top: 35px;
+            padding: 22px;
+            border-radius: 18px;
+            background: #fafafa;
+            border:
+                1px solid #eeeeee;
+        }
+
+        .question-title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4527a0;
+        }
+
+        .question-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        #questionInput {
+            flex: 1;
+            padding: 16px 18px;
+            font-size: 17px;
+            border-radius: 14px;
+            border:
+                1px solid #cfd8dc;
+            outline: none;
+        }
+
+        #questionInput:focus {
+            border-color:
+                #5c6bc0;
+            box-shadow:
+                0 0 0 3px
+                rgba(92, 107, 192, 0.08);
+        }
+
+        .ask-btn {
+            border: none;
+            border-radius: 14px;
+            padding: 16px 30px;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            background:
+                linear-gradient(
+                    135deg,
+                    #ff7043,
+                    #ec407a
+                );
+        }
+
+        .ask-btn:hover,
+        .upload-btn:hover,
+        .clear-btn:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        /* =================================================
+           SPINNER
+        ================================================= */
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+            border: 3px solid rgba(0, 0, 0, 0.12);
+            border-top-color: #1565c0;
+            border-radius: 50%;
+            animation: spin 0.85s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* =================================================
+           RESPONSE
+        ================================================= */
+
+        .response-card {
+            display: none;
+            margin-top: 25px;
+            padding: 28px;
+            border-radius: 20px;
+            border:
+                1px solid #e0e4ff;
+            background: white;
+            box-shadow:
+                0 8px 25px
+                rgba(60, 70, 130, 0.10);
+        }
+
+        .response-header {
+            padding-bottom: 15px;
+            margin-bottom: 18px;
+            border-bottom:
+                2px solid #eeeeee;
+        }
+
+        .response-header h3 {
+            margin: 0;
+            color: #4527a0;
+            font-size: 24px;
+        }
+
+        #responseArea {
+            font-size: 17px;
+            line-height: 1.85;
+            color: #263238;
+        }
+
+        #responseArea strong {
+            color: #5e35b1;
+        }
+
+        #responseArea h1,
+        #responseArea h2,
+        #responseArea h3 {
+            color: #1565c0;
+        }
+
+        #responseArea li {
+            margin-bottom: 8px;
+        }
+
+        .language-display,
+        .provider-display {
+            display: inline-block;
+            margin-top: 18px;
+            padding:
+                9px 14px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .language-display {
+            background: #fff8e1;
+            color: #8d6e00;
+        }
+
+        .provider-display {
+            margin-left: 8px;
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
+
+        .ai-disclaimer {
+            margin-top: 20px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: #fff8e1;
+            color: #6d5a00;
+            border-left: 5px solid #f9a825;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* =================================================
+           AYURVEDA CENTRE SEARCH
+        ================================================= */
+
+        .centre-section {
+            margin-top: 40px;
+            padding: 28px;
+            border-radius: 22px;
+            background:
+                linear-gradient(
+                    135deg,
+                    #effff7,
+                    #f0fbff
+                );
+            border:
+                1px solid #cdebe0;
+            box-shadow:
+                0 8px 25px
+                rgba(0, 100, 70, 0.08);
+        }
+
+        .centre-heading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .centre-icon {
+            font-size: 44px;
+        }
+
+        .centre-heading h2 {
+            margin: 0;
+            color: #004d40;
+            font-size: 32px;
+        }
+
+        .centre-heading p {
+            margin: 8px 0 0;
+            color: #607d8b;
+            font-size: 17px;
+        }
+
+        .centre-search-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        #centreLocation {
+            flex: 1;
+            min-width: 280px;
+            padding: 16px 18px;
+            font-size: 16px;
+            border-radius: 14px;
+            border:
+                1px solid #b2dfdb;
+            outline: none;
+            background: white;
+        }
+
+        #centreLocation:focus {
+            border-color:
+                #00897b;
+            box-shadow:
+                0 0 0 3px
+                rgba(0, 137, 123, 0.10);
+        }
+
+        .centre-search-btn,
+        .near-me-btn,
+        .centre-clear-btn {
+            padding: 16px 25px;
+            border-radius: 13px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .centre-search-btn {
+            border: none;
+            color: white;
+            background:
+                linear-gradient(
+                    135deg,
+                    #00897b,
+                    #00695c
+                );
+        }
+
+        .near-me-btn {
+            border:
+                1px solid #80cbc4;
+            background:
+                #e0f7f3;
+            color: #00695c;
+        }
+
+        .centre-clear-btn {
+            border:
+                1px solid #cfd8dc;
+            background:
+                #f5f7f8;
+            color: #455a64;
+        }
+
+        .centre-search-btn:hover,
+        .near-me-btn:hover,
+        .centre-clear-btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.92;
+        }
+
+        .centre-rules {
+            margin-top: 18px;
+            padding:
+                13px 16px;
+            border-radius: 12px;
+            background:
+                #e8f5f1;
+            color: #455a64;
+            font-size: 14px;
+        }
+
+        .centre-rules strong {
+            color: #00796b;
+        }
+
+        .centre-status {
+            margin-top: 18px;
+            text-align: center;
+            color: #546e7a;
+            font-weight: bold;
+        }
+
+        /* =================================================
+           CENTRE RESULTS
+        ================================================= */
+
+        .centre-results {
+            display: grid;
+            grid-template-columns:
+                repeat(
+                    auto-fit,
+                    minmax(280px, 1fr)
+                );
+            gap: 18px;
+            margin-top: 25px;
+        }
+
+        .centre-card {
+            padding: 20px;
+            border-radius: 17px;
+            background: white;
+            border:
+                1px solid #d7ebe5;
+            border-left:
+                5px solid #009688;
+            box-shadow:
+                0 5px 16px
+                rgba(0, 80, 70, 0.08);
+            transition: 0.25s;
+        }
+
+        .centre-card:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                0 8px 20px
+                rgba(0, 80, 70, 0.15);
+        }
+
+        .centre-card h3 {
+            margin:
+                0 0 12px;
+            color: #00695c;
+            font-size: 19px;
+        }
+
+        .centre-info {
+            margin-bottom: 9px;
+            color: #455a64;
+            line-height: 1.5;
+        }
+
+        .rating {
+            display: inline-block;
+            padding:
+                5px 9px;
+            border-radius: 8px;
+            background: #fff8e1;
+            color: #ef6c00;
+            font-weight: bold;
+        }
+
+        .centre-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+            margin-top: 15px;
+        }
+
+        .direction-btn,
+        .website-btn {
+            display: inline-block;
+            padding:
+                9px 13px;
+            border-radius: 9px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .direction-btn {
+            background: #1565c0;
+            color: white;
+        }
+
+        .website-btn {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        /* =================================================
+           MAP
+        ================================================= */
+
+        .map-section {
+            margin-top: 30px;
+            padding: 22px;
+            border-radius: 20px;
+            background:
+                linear-gradient(
+                    135deg,
+                    #f8fbff,
+                    #effaf6
+                );
+            border:
+                1px solid #d4e7df;
+            box-shadow:
+                0 6px 20px
+                rgba(0, 80, 70, 0.08);
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .map-header h3 {
+            margin: 0;
+            color: #00695c;
+            font-size: 23px;
+        }
+
+        .map-header p {
+            margin: 6px 0 0;
+            color: #607d8b;
+        }
+
+        .search-map {
+            width: 100%;
+            height: 450px;
+            border: none;
+            border-radius: 15px;
+            background: #eeeeee;
+            box-shadow:
+                0 4px 14px
+                rgba(0, 0, 0, 0.08);
+        }
+
+        .map-open-btn {
+            border: none;
+            padding:
+                11px 17px;
+            border-radius: 10px;
+            cursor: pointer;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            background:
+                linear-gradient(
+                    135deg,
+                    #1976d2,
+                    #3949ab
+                );
+        }
+
+        .map-open-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* =================================================
+           SOURCES
+        ================================================= */
+
+        .sources-section {
+            display: none;
+            margin-top: 32px;
+            padding-top: 25px;
+            border-top:
+                3px solid #e8eaf6;
+        }
+
+        .sources-section h3 {
+            color: #283593;
+            font-size: 24px;
+        }
+
+        .source-card {
+            margin-bottom: 24px;
+            padding: 22px;
+            border-radius: 18px;
+            border:
+                1px solid #dfe6f3;
+            border-left:
+                6px solid #3f51b5;
+            background:
+                linear-gradient(
+                    135deg,
+                    #f7fbff,
+                    #faf7ff
+                );
+        }
+
+        .source-number {
+            display: inline-block;
+            padding:
+                7px 14px;
+            margin-bottom: 16px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            background: #3f51b5;
+        }
+
+        .source-file {
+            color: #00695c;
+            font-size: 17px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .source-category,
+        .source-page,
+        .source-type,
+        .source-similarity {
+            display: inline-block;
+            padding:
+                6px 11px;
+            margin-right: 8px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+
+        .source-category {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
+        .source-page {
+            background: #fff3e0;
+            color: #e65100;
+            font-weight: bold;
+        }
+
+        .source-type {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .source-similarity {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .source-toggle {
+            display: block;
+            margin-top: 12px;
+            padding:
+                9px 16px;
+            border: none;
+            border-radius: 9px;
+            color: white;
+            cursor: pointer;
+            background:
+                linear-gradient(
+                    135deg,
+                    #42a5f5,
+                    #5c6bc0
+                );
+        }
+
+        .source-text {
+            display: none;
+            margin-top: 14px;
+            padding: 18px;
+            border-radius: 12px;
+            border:
+                1px solid #e0e0e0;
+            background: white;
+            color: #37474f;
+            font-size: 15px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* =================================================
+           STATUS / ALERTS
+        ================================================= */
+
+        .status {
+            margin-top: 12px;
+            text-align: center;
+            color: #607d8b;
+            line-height: 1.6;
+        }
+
+        .error-box {
+            padding: 15px;
+            border-radius: 12px;
+            background: #ffebee;
+            color: #c62828;
+            border-left:
+                5px solid #e53935;
+        }
+
+        .success-box {
+            display: inline-block;
+            padding:
+                12px 16px;
+            border-radius: 12px;
+            background: #e8f5e9;
+            color: #1b5e20;
+            border-left:
+                5px solid #43a047;
+            text-align: left;
+        }
+
+        .warning-box {
+            display: inline-block;
+            padding:
+                12px 16px;
+            border-radius: 12px;
+            background: #fff8e1;
+            color: #8d6e00;
+            border-left:
+                5px solid #f9a825;
+            text-align: left;
+        }
+
+        /* =================================================
+           FOOTER
+        ================================================= */
+
+        .footer {
+            margin-top: 45px;
+            padding: 24px;
+            text-align: center;
+            color: #546e7a;
+            background:
+                linear-gradient(
+                    135deg,
+                    #f7f9ff,
+                    #f1fbf8
+                );
+            border-top:
+                1px solid #e0e7ef;
+            line-height: 1.7;
+        }
+
+        .footer strong {
+            color: #283593;
+        }
+
+        /* =================================================
+           BACK TO TOP
+        ================================================= */
+
+        .back-to-top {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            background:
+                linear-gradient(
+                    135deg,
+                    #3949ab,
+                    #00897b
+                );
+            box-shadow:
+                0 8px 20px
+                rgba(0, 0, 0, 0.18);
+            z-index: 999;
+        }
+
+        /* =================================================
+           MOBILE
+        ================================================= */
+
+        @media (max-width: 700px) {
+
+            .header h1 {
+                font-size: 29px;
+            }
+
+            .main {
+                padding: 18px;
+            }
+
+            .question-row,
+            .centre-search-row {
+                flex-direction: column;
+            }
+
+            #questionInput,
+            .ask-btn,
+            #centreLocation,
+            .centre-search-btn,
+            .near-me-btn,
+            .centre-clear-btn {
+                width: 100%;
+            }
+
+            .clear-btn {
+                margin-left: 0;
+            }
+
+            .search-map {
+                height: 330px;
+            }
+
+            .map-open-btn {
+                width: 100%;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="app-container">
+
+
+    <!-- =================================================
+         HEADER
+    ================================================= -->
+
+    <div class="header">
+
+        <div>
+
+            <h1>
+                🌿 IP-SHAKTI Sahayak
+            </h1>
+
+            <p>
+                Multilingual AI Assistant for
+                Intellectual Property & Ayurveda
+            </p>
+
+        </div>
+
+
+        <div class="language-box">
+
+            <label>
+                🌐 Language
+            </label>
+
+            <select id="language">
+
+                <option value="English">
+                    English
+                </option>
+
+                <option value="Bengali">
+                    বাংলা
+                </option>
+
+                <option value="Hindi">
+                    हिन्दी
+                </option>
+
+            </select>
+
+        </div>
+
+    </div>
+
+
+    <div class="main">
+
+
+        <!-- =================================================
+             WELCOME
+        ================================================= -->
+
+        <div class="welcome">
+
+            <h2>
+                How can I help you?
+            </h2>
+
+            <p>
+                Ask questions about patents,
+                trademarks, copyright,
+                WIPO, Ayurveda and
+                traditional knowledge.
+            </p>
+
+        </div>
+
+
+        <!-- =================================================
+             FEATURES
+        ================================================= -->
+
+        <div class="features">
+
+            <div class="feature-card">
+
+                <h3>
+                    📘 Intellectual Property
+                </h3>
+
+                <p>
+                    Learn about patents,
+                    trademarks and copyright.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <h3>
+                    🌿 Ayurveda
+                </h3>
+
+                <p>
+                    Explore Ayurveda and
+                    traditional knowledge.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <h3>
+                    🌍 International IP
+                </h3>
+
+                <p>
+                    Explore WIPO and
+                    international IP systems.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <h3>
+                    📄 Upload Document
+                </h3>
+
+                <p>
+                    Upload PDF, TXT or DOCX.
+                    Documents become searchable.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             QUICK QUESTIONS
+        ================================================= -->
+
+        <div class="quick-section">
+
+            <h3>
+                ⚡ Quick Questions
+            </h3>
+
+
+            <div class="quick-buttons">
+
+                <button
+                    class="quick-btn"
+                    onclick="fillQuestion('What is a patent?')">
+                    Patent
+                </button>
+
+                <button
+                    class="quick-btn"
+                    onclick="fillQuestion('What is WIPO?')">
+                    WIPO
+                </button>
+
+                <button
+                    class="quick-btn"
+                    onclick="fillQuestion('What is a trademark?')">
+                    Trademark
+                </button>
+
+                <button
+                    class="quick-btn"
+                    onclick="fillQuestion('What is traditional knowledge?')">
+                    Traditional Knowledge
+                </button>
+
+                <button
+                    class="quick-btn"
+                    onclick="fillQuestion('How are Ayurveda and intellectual property related?')">
+                    Ayurveda & IP
+                </button>
+
+                <button
+                    class="quick-btn"
+                    onclick="fillQuestion('What is copyright?')">
+                    Copyright
+                </button>
+
+                <button
+                    class="quick-btn"
+                    onclick="fillQuestion('What is PATENTSCOPE?')">
+                    PATENTSCOPE
+                </button>
+
+                <button
+                    class="quick-btn"
+                    onclick="fillQuestion('What is the Madrid System?')">
+                    Madrid System
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             UPLOAD
+        ================================================= -->
+
+        <div class="upload-section">
+
+            <h3>
+                📤 Upload Document
+            </h3>
+
+            <p>
+                Upload a PDF, TXT or DOCX file.
+                The file automatically becomes searchable.
+            </p>
+
+            <input
+                type="file"
+                id="fileUpload"
+                accept=".pdf,.txt,.docx"
+            >
+
+            <br>
+
+            <button
+                class="upload-btn"
+                onclick="uploadFile()">
+                ⬆ Upload & Index
+            </button>
+
+            <button
+                class="clear-btn"
+                onclick="clearUpload()">
+                Clear
+            </button>
+
+            <div
+                id="uploadStatus"
+                class="status">
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             ASK QUESTION
+        ================================================= -->
+
+        <div class="question-section">
+
+            <h3 class="question-title">
+                🤖 Ask IP-SHAKTI Sahayak
+            </h3>
+
+            <div class="question-row">
+
+                <input
+                    type="text"
+                    id="questionInput"
+                    placeholder="Ask your question here..."
+                >
+
+                <button
+                    class="ask-btn"
+                    onclick="askQuestion()">
+                    Ask ➜
+                </button>
+
+            </div>
+
+            <button
+                class="clear-btn"
+                onclick="clearQuestion()">
+                Clear Question
+            </button>
+
+            <div
+                id="questionStatus"
+                class="status">
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             AI RESPONSE
+        ================================================= -->
+
+        <div
+            id="responseCard"
+            class="response-card">
+
+            <div class="response-header">
+
+                <h3>
+                    🤖 IP-SHAKTI Sahayak
+                </h3>
+
+            </div>
+
+            <div id="responseArea">
+            </div>
+
+            <div
+                id="languageDisplay"
+                class="language-display">
+            </div>
+
+            <div
+                id="providerDisplay"
+                class="provider-display">
+            </div>
+
+            <div class="ai-disclaimer">
+
+                ⚠️ AI-generated educational information.
+                For legal or medical decisions, consult
+                the appropriate qualified professional
+                or official authority.
+
+            </div>
+
+            <div
+                id="sourcesSection"
+                class="sources-section">
+
+                <h3>
+                    📚 Retrieved Sources
+                </h3>
+
+                <div id="sourcesArea">
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             AYURVEDA CENTRE SEARCH
+        ================================================= -->
+
+        <div class="centre-section">
+
+            <div class="centre-heading">
+
+                <div class="centre-icon">
+                    🌿
+                </div>
+
+                <div>
+
+                    <h2>
+                        Find Ayurveda Centres
+                    </h2>
+
+                    <p>
+                        Search Ayurveda centres by city,
+                        state or your current location.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="centre-search-row">
+
+                <input
+                    type="text"
+                    id="centreLocation"
+                    placeholder=
+                    "Example: Kolkata, Mumbai, Kerala, West Bengal..."
+                >
+
+                <button
+                    class="centre-search-btn"
+                    onclick="searchAyurvedaCentres()">
+                    🔍 Search
+                </button>
+
+                <button
+                    class="near-me-btn"
+                    onclick="searchNearMe()">
+                    📍 Near Me
+                </button>
+
+                <button
+                    class="centre-clear-btn"
+                    onclick="clearCentreSearch()">
+                    Clear
+                </button>
+
+            </div>
+
+
+            <div class="centre-rules">
+
+                <strong>
+                    Search:
+                </strong>
+
+                Enter a city or state.
+
+                &nbsp; | &nbsp;
+
+                <strong>
+                    Near Me:
+                </strong>
+
+                Search around your current location.
+
+            </div>
+
+
+            <div
+                id="centreStatus"
+                class="centre-status">
+            </div>
+
+
+            <div
+                id="centreResults"
+                class="centre-results">
+            </div>
+
+
+            <!-- =================================================
+                 MAP BELOW RESULTS
+            ================================================= -->
+
+            <div
+                id="mapSection"
+                class="map-section"
+                style="display:none;">
+
+                <div class="map-header">
+
+                    <div>
+
+                        <h3>
+                            🗺️ Search Map
+                        </h3>
+
+                        <p id="mapLocationText">
+                            Ayurveda centre location
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="openMapButton"
+                        class="map-open-btn"
+                        onclick="openCurrentMap()">
+
+                        📍 Open in Google Maps
+
+                    </button>
+
+                </div>
+
+                <iframe
+                    id="searchMap"
+                    class="search-map"
+                    src=""
+                    loading="lazy"
+                    allowfullscreen
+                    referrerpolicy=
+                    "no-referrer-when-downgrade">
+                </iframe>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         FOOTER
+    ================================================= -->
+
+    <div class="footer">
+
+        <strong>
+            IP-SHAKTI Sahayak
+        </strong>
+
+        <br>
+
+        AI-assisted Intellectual Property &
+        Ayurveda Knowledge System
+
+        <br>
+
+        Educational Project
+
+    </div>
+
+</div>
+
+
+<button
+    id="backToTop"
+    class="back-to-top"
+    onclick="scrollToTop()">
+    ↑
+</button>
+
+
+<script>
+
+
+    /* =====================================================
+       CONFIG
+    ===================================================== */
+
+    const API_URL = "";
+
+
+    let currentMapUrl =
+        "";
+
+
+    let lastCentreSearchLocation =
+        "";
+
+
+    /* =====================================================
+       QUICK QUESTIONS
+    ===================================================== */
+
+    function fillQuestion(text) {
+
+        const input =
+            document.getElementById(
+                "questionInput"
+            );
+
+        input.value =
+            text;
+
+        input.focus();
+
+        input.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
+    }
+
+
+    /* =====================================================
+       CLEAR QUESTION
+    ===================================================== */
+
+    function clearQuestion() {
+
+        document.getElementById(
+            "questionInput"
+        ).value = "";
+
+        document.getElementById(
+            "questionStatus"
+        ).textContent = "";
+
+        document.getElementById(
+            "responseArea"
+        ).innerHTML = "";
+
+        document.getElementById(
+            "sourcesArea"
+        ).innerHTML = "";
+
+        document.getElementById(
+            "sourcesSection"
+        ).style.display = "none";
+
+        document.getElementById(
+            "responseCard"
+        ).style.display = "none";
+
+        document.getElementById(
+            "languageDisplay"
+        ).textContent = "";
+
+        document.getElementById(
+            "providerDisplay"
+        ).textContent = "";
+
+    }
+
+
+    /* =====================================================
+       ASK QUESTION
+    ===================================================== */
+
+    async function askQuestion() {
+
+        const question =
+            document
+                .getElementById(
+                    "questionInput"
+                )
+                .value
+                .trim();
+
+
+        const language =
+            document
+                .getElementById(
+                    "language"
+                )
+                .value;
+
+
+        const responseCard =
+            document.getElementById(
+                "responseCard"
+            );
+
+
+        const responseArea =
+            document.getElementById(
+                "responseArea"
+            );
+
+
+        const status =
+            document.getElementById(
+                "questionStatus"
+            );
+
+
+        const languageDisplay =
+            document.getElementById(
+                "languageDisplay"
+            );
+
+
+        const providerDisplay =
+            document.getElementById(
+                "providerDisplay"
+            );
+
+
+        const sourcesSection =
+            document.getElementById(
+                "sourcesSection"
+            );
+
+
+        const sourcesArea =
+            document.getElementById(
+                "sourcesArea"
+            );
+
+
+        if (!question) {
+
+            status.textContent =
+                "Please enter a question.";
+
+            return;
+
+        }
+
+
+        responseCard.style.display =
+            "block";
+
+
+        responseArea.innerHTML = `
+            <p>
+                <span class="spinner"></span>
+                Searching the knowledge base and generating an answer...
+            </p>
+        `;
+
+
+        providerDisplay.textContent =
+            "";
+
+
+        sourcesSection.style.display =
+            "none";
+
+
+        sourcesArea.innerHTML =
+            "";
+
+
+        status.innerHTML =
+            '<span class="spinner"></span>Generating answer...';
+
+
+        responseCard.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+
+
+        try {
+
+            const response =
+                await fetch(
+
+                    API_URL
+                    + "/api/search",
+
+                    {
+
+                        method:
+                            "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+                                question:
+                                    question,
+                                language:
+                                    language
+                            })
+
+                    }
+
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (data.error) {
+
+                responseArea.innerHTML = `
+                    <div class="error-box">
+                        ❌ ${escapeHtml(data.error)}
+                    </div>
+                `;
+
+
+                status.textContent =
+                    "Request failed.";
+
+
+                if (
+                    data.gemini_error
+                    ||
+                    data.groq_error
+                ) {
+
+                    console.log(
+                        "Gemini:",
+                        data.gemini_error
+                    );
+
+                    console.log(
+                        "Groq:",
+                        data.groq_error
+                    );
+
+                }
+
+                return;
+
+            }
+
+
+            if (data.answer) {
+
+                const cleanAnswer =
+                    data.answer.replace(
+                        /\\\*/g,
+                        "*"
+                    );
+
+                responseArea.innerHTML =
+                    marked.parse(
+                        cleanAnswer
+                    );
+
+            }
+
+
+            languageDisplay.textContent =
+                "🌐 Language: "
+                + (
+                    data.language
+                    ||
+                    language
+                );
+
+
+            if (data.provider) {
+
+                providerDisplay.textContent =
+                    "⚡ AI Provider: "
+                    + data.provider;
+
+            }
+
+            else {
+
+                providerDisplay.textContent =
+                    "";
+
+            }
+
+
+            displaySources(
+                data.sources
+            );
+
+
+            status.textContent =
+                "✓ Answer generated successfully.";
+
+        }
+
+        catch (error) {
+
+            responseArea.innerHTML = `
+                <div class="error-box">
+                    ❌ Unable to connect to FastAPI backend.
+                </div>
+            `;
+
+            status.textContent =
+                "Backend connection failed.";
+
+            console.error(
+                error
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       DISPLAY SOURCES
+    ===================================================== */
+
+    function displaySources(
+        sources
+    ) {
+
+        const section =
+            document.getElementById(
+                "sourcesSection"
+            );
+
+
+        const area =
+            document.getElementById(
+                "sourcesArea"
+            );
+
+
+        area.innerHTML =
+            "";
+
+
+        if (
+            !sources
+            ||
+            sources.length === 0
+        ) {
+
+            section.style.display =
+                "none";
+
+            return;
+
+        }
+
+
+        section.style.display =
+            "block";
+
+
+        sources.forEach(
+
+            function(
+                source,
+                index
+            ) {
+
+                const card =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                card.className =
+                    "source-card";
+
+
+                const sourceName =
+                    source.source
+                    ||
+                    "Unknown Document";
+
+
+                const category =
+                    source.category
+                    ||
+                    "general";
+
+
+                const page =
+                    source.page
+                    ||
+                    "Unknown";
+
+
+                const text =
+                    source.text
+                    ||
+                    "";
+
+
+                const relevance =
+                    source.relevance_score;
+
+
+                const uploaded =
+                    source.uploaded === true;
+
+
+                const sourceType =
+                    uploaded
+                    ? "📤 User Uploaded Document"
+                    : "📚 Main Knowledge Base";
+
+
+                const textId =
+                    "sourceText"
+                    + index;
+
+
+                let similarityHtml =
+                    "";
+
+
+                if (
+                    relevance !== undefined
+                    &&
+                    relevance !== null
+                    &&
+                    !Number.isNaN(
+                        Number(relevance)
+                    )
+                ) {
+
+                    const percent =
+                        Math.max(
+                            0,
+                            Math.min(
+                                100,
+                                Number(relevance) * 100
+                            )
+                        ).toFixed(1);
+
+
+                    similarityHtml = `
+                        <span class="source-similarity">
+                            🎯 Similarity: ${percent}%
+                        </span>
+                    `;
+
+                }
+
+
+                card.innerHTML = `
+
+                    <div class="source-number">
+                        Source ${index + 1}
+                    </div>
+
+                    <div class="source-file">
+                        📄 ${escapeHtml(sourceName)}
+                    </div>
+
+                    <div>
+
+                        <span class="source-type">
+                            ${escapeHtml(sourceType)}
+                        </span>
+
+                        <span class="source-category">
+                            🗂 ${escapeHtml(category)}
+                        </span>
+
+                        <span class="source-page">
+                            📖 Page ${escapeHtml(String(page))}
+                        </span>
+
+                        ${similarityHtml}
+
+                    </div>
+
+                    <button
+                        class="source-toggle"
+                        onclick="
+                            toggleSource(
+                                '${textId}',
+                                this
+                            )
+                        ">
+
+                        View Retrieved Text
+
+                    </button>
+
+                    <div
+                        class="source-text"
+                        id="${textId}">
+
+                        ${escapeHtml(text)}
+
+                    </div>
+
+                `;
+
+
+                area.appendChild(
+                    card
+                );
+
+            }
+
+        );
+
+    }
+
+
+    /* =====================================================
+       TOGGLE SOURCE
+    ===================================================== */
+
+    function toggleSource(
+        id,
+        button
+    ) {
+
+        const element =
+            document.getElementById(
+                id
+            );
+
+
+        if (
+            element.style.display
+            === "block"
+        ) {
+
+            element.style.display =
+                "none";
+
+            button.textContent =
+                "View Retrieved Text";
+
+        }
+
+        else {
+
+            element.style.display =
+                "block";
+
+            button.textContent =
+                "Hide Retrieved Text";
+
+        }
+
+    }
+
+
+    /* =====================================================
+       FILE UPLOAD
+    ===================================================== */
+
+    async function uploadFile() {
+
+        const input =
+            document.getElementById(
+                "fileUpload"
+            );
+
+
+        const status =
+            document.getElementById(
+                "uploadStatus"
+            );
+
+
+        if (
+            !input.files
+            ||
+            input.files.length === 0
+        ) {
+
+            status.textContent =
+                "Please select a file.";
+
+            return;
+
+        }
+
+
+        const file =
+            input.files[0];
+
+
+        const formData =
+            new FormData();
+
+
+        formData.append(
+            "file",
+            file
+        );
+
+
+        status.innerHTML = `
+            <span class="spinner"></span>
+            Uploading and indexing document...
+        `;
+
+
+        try {
+
+            const response =
+                await fetch(
+
+                    API_URL
+                    + "/api/upload",
+
+                    {
+                        method:
+                            "POST",
+                        body:
+                            formData
+                    }
+
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (data.error) {
+
+                status.innerHTML = `
+                    <div class="error-box">
+                        ❌ ${escapeHtml(data.error)}
+                    </div>
+                `;
+
+            }
+
+
+            else if (
+                data.warning
+            ) {
+
+                status.innerHTML = `
+                    <div class="warning-box">
+
+                        ⚠️
+                        ${escapeHtml(
+                            data.message
+                            ||
+                            "File uploaded."
+                        )}
+
+                        <br><br>
+
+                        ${escapeHtml(
+                            data.warning
+                        )}
+
+                    </div>
+                `;
+
+
+                input.value =
+                    "";
+
+            }
+
+
+            else {
+
+                let message =
+                    "✅ "
+                    +
+                    escapeHtml(
+                        data.message
+                        ||
+                        "Upload successful."
+                    );
+
+
+                if (
+                    data.chunks_added
+                    !== undefined
+                ) {
+
+                    message +=
+                        "<br>📚 "
+                        +
+                        escapeHtml(
+                            String(
+                                data.chunks_added
+                            )
+                        )
+                        +
+                        " chunks added.";
+
+                }
+
+
+                if (
+                    data.searchable
+                ) {
+
+                    message +=
+                        "<br>🔎 Document is now searchable.";
+
+                }
+
+
+                status.innerHTML = `
+                    <div class="success-box">
+                        ${message}
+                    </div>
+                `;
+
+
+                input.value =
+                    "";
+
+            }
+
+        }
+
+        catch (error) {
+
+            status.innerHTML = `
+                <div class="error-box">
+                    ❌ Upload failed. Check FastAPI backend.
+                </div>
+            `;
+
+            console.error(
+                error
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       CLEAR UPLOAD
+    ===================================================== */
+
+    function clearUpload() {
+
+        document.getElementById(
+            "fileUpload"
+        ).value = "";
+
+        document.getElementById(
+            "uploadStatus"
+        ).innerHTML = "";
+
+    }
+
+
+    /* =====================================================
+       SEARCH AYURVEDA CENTRES
+    ===================================================== */
+
+    async function searchAyurvedaCentres() {
+
+        const location =
+            document
+                .getElementById(
+                    "centreLocation"
+                )
+                .value
+                .trim();
+
+
+        const status =
+            document.getElementById(
+                "centreStatus"
+            );
+
+
+        const resultsBox =
+            document.getElementById(
+                "centreResults"
+            );
+
+
+        const mapSection =
+            document.getElementById(
+                "mapSection"
+            );
+
+
+        if (!location) {
+
+            status.textContent =
+                "Please enter a city, state or location.";
+
+            return;
+
+        }
+
+
+        lastCentreSearchLocation =
+            location;
+
+
+        status.innerHTML = `
+            <span class="spinner"></span>
+            Searching Ayurveda centres...
+        `;
+
+
+        resultsBox.innerHTML =
+            "";
+
+
+        mapSection.style.display =
+            "none";
+
+
+        currentMapUrl =
+            "";
+
+
+        try {
+
+            const response =
+                await fetch(
+
+                    API_URL
+                    + "/api/ayurveda-centres",
+
+                    {
+
+                        method:
+                            "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+                                location:
+                                    location,
+                                latitude:
+                                    null,
+                                longitude:
+                                    null
+                            })
+
+                    }
+
+                );
+
+
+            const data =
+                await response.json();
+
+
+            showCentreResults(
+                data,
+                location
+            );
+
+        }
+
+        catch (error) {
+
+            status.textContent =
+                "❌ Unable to search Ayurveda centres.";
+
+            console.error(
+                error
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       NEAR ME
+    ===================================================== */
+
+    function searchNearMe() {
+
+        const status =
+            document.getElementById(
+                "centreStatus"
+            );
+
+
+        if (
+            !navigator.geolocation
+        ) {
+
+            status.textContent =
+                "Geolocation is not supported by this browser.";
+
+            return;
+
+        }
+
+
+        lastCentreSearchLocation =
+            "your current location";
+
+
+        status.innerHTML = `
+            <span class="spinner"></span>
+            Getting your current location...
+        `;
+
+
+        navigator.geolocation
+            .getCurrentPosition(
+
+
+                async function(
+                    position
+                ) {
+
+                    const latitude =
+                        position.coords.latitude;
+
+
+                    const longitude =
+                        position.coords.longitude;
+
+
+                    status.innerHTML = `
+                        <span class="spinner"></span>
+                        Searching nearby Ayurveda centres...
+                    `;
+
+
+                    try {
+
+                        const response =
+                            await fetch(
+
+                                API_URL
+                                + "/api/ayurveda-centres",
+
+                                {
+
+                                    method:
+                                        "POST",
+
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json"
+                                    },
+
+                                    body:
+                                        JSON.stringify({
+                                            location:
+                                                "Ayurveda centre",
+                                            latitude:
+                                                latitude,
+                                            longitude:
+                                                longitude
+                                        })
+
+                                }
+
+                            );
+
+
+                        const data =
+                            await response.json();
+
+
+                        showCentreResults(
+                            data,
+                            "your current location"
+                        );
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        status.textContent =
+                            "❌ Nearby search failed.";
+
+                        console.error(
+                            error
+                        );
+
+                    }
+
+                },
+
+
+                function(
+                    error
+                ) {
+
+                    if (
+                        error.code === 1
+                    ) {
+
+                        status.textContent =
+                            "❌ Location permission was denied.";
+
+                    }
+
+                    else {
+
+                        status.textContent =
+                            "❌ Unable to get your location.";
+
+                    }
+
+                }
+
+            );
+
+    }
+
+
+    /* =====================================================
+       CLEAR CENTRE SEARCH
+    ===================================================== */
+
+    function clearCentreSearch() {
+
+        document.getElementById(
+            "centreLocation"
+        ).value = "";
+
+        document.getElementById(
+            "centreStatus"
+        ).innerHTML = "";
+
+        document.getElementById(
+            "centreResults"
+        ).innerHTML = "";
+
+        document.getElementById(
+            "mapSection"
+        ).style.display = "none";
+
+        document.getElementById(
+            "searchMap"
+        ).src = "";
+
+        currentMapUrl =
+            "";
+
+        lastCentreSearchLocation =
+            "";
+
+    }
+
+
+    /* =====================================================
+       DISPLAY CENTRES
+    ===================================================== */
+
+    function showCentreResults(
+        data,
+        searchedLocation
+    ) {
+
+        const status =
+            document.getElementById(
+                "centreStatus"
+            );
+
+
+        const resultsBox =
+            document.getElementById(
+                "centreResults"
+            );
+
+
+        const mapSection =
+            document.getElementById(
+                "mapSection"
+            );
+
+
+        resultsBox.innerHTML =
+            "";
+
+
+        mapSection.style.display =
+            "none";
+
+
+        if (
+            data.status
+            !== "success"
+        ) {
+
+            status.textContent =
+                "❌ "
+                +
+                (
+                    data.message
+                    ||
+                    "Search failed."
+                );
+
+            return;
+
+        }
+
+
+        if (
+            !data.results
+            ||
+            data.results.length === 0
+        ) {
+
+            status.textContent =
+                "No Ayurveda centres were found.";
+
+            return;
+
+        }
+
+
+        const label =
+            searchedLocation
+            ||
+            lastCentreSearchLocation
+            ||
+            "the selected location";
+
+
+        status.textContent =
+            "✅ "
+            +
+            data.results.length
+            +
+            " Ayurveda centres found in "
+            +
+            label
+            +
+            ".";
+
+
+        /* --------------------------------------------
+           SHOW FIRST RESULT ON MAP
+        -------------------------------------------- */
+
+        const firstCentre =
+            data.results.find(
+
+                function(place) {
+
+                    return (
+
+                        place.latitude
+                        !== null
+                        &&
+                        place.latitude
+                        !== undefined
+                        &&
+                        place.longitude
+                        !== null
+                        &&
+                        place.longitude
+                        !== undefined
+
+                    );
+
+                }
+
+            );
+
+
+        if (
+            firstCentre
+        ) {
+
+            showSearchMap(
+
+                firstCentre.latitude,
+
+                firstCentre.longitude,
+
+                firstCentre.name,
+
+                firstCentre.address
+
+            );
+
+        }
+
+
+        /* --------------------------------------------
+           RESULT CARDS
+        -------------------------------------------- */
+
+        data.results.forEach(
+
+            function(place) {
+
+                const card =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                card.className =
+                    "centre-card";
+
+
+                let ratingHtml =
+                    "";
+
+
+                if (
+                    place.rating
+                ) {
+
+                    ratingHtml = `
+                        <div class="centre-info">
+
+                            <span class="rating">
+                                ⭐
+                                ${escapeHtml(
+                                    String(
+                                        place.rating
+                                    )
+                                )}
+                            </span>
+
+                            ${
+                                place.reviews
+                                ?
+                                " (" +
+                                escapeHtml(
+                                    String(
+                                        place.reviews
+                                    )
+                                )
+                                +
+                                " reviews)"
+                                :
+                                ""
+                            }
+
+                        </div>
+                    `;
+
+                }
+
+
+                let phoneHtml =
+                    "";
+
+
+                if (
+                    place.phone
+                ) {
+
+                    phoneHtml = `
+                        <div class="centre-info">
+                            📞
+                            ${escapeHtml(
+                                place.phone
+                            )}
+                        </div>
+                    `;
+
+                }
+
+
+                let typeHtml =
+                    "";
+
+
+                if (
+                    place.type
+                ) {
+
+                    typeHtml = `
+                        <div class="centre-info">
+                            🏥
+                            ${escapeHtml(
+                                place.type
+                            )}
+                        </div>
+                    `;
+
+                }
+
+
+                let directionHtml =
+                    "";
+
+
+                if (
+                    place.latitude !== null
+                    &&
+                    place.latitude !== undefined
+                    &&
+                    place.longitude !== null
+                    &&
+                    place.longitude !== undefined
+                ) {
+
+                    const directionsUrl =
+                        "https://www.google.com/maps/dir/?api=1"
+                        +
+                        "&destination="
+                        +
+                        encodeURIComponent(
+                            place.latitude
+                            +
+                            ","
+                            +
+                            place.longitude
+                        );
+
+
+                    directionHtml = `
+                        <a
+                            class="direction-btn"
+                            href="${directionsUrl}"
+                            target="_blank"
+                            rel="noopener noreferrer">
+
+                            📍 Directions
+
+                        </a>
+                    `;
+
+                }
+
+
+                else if (
+                    place.maps_link
+                ) {
+
+                    directionHtml = `
+                        <a
+                            class="direction-btn"
+                            href="${escapeHtml(
+                                place.maps_link
+                            )}"
+                            target="_blank"
+                            rel="noopener noreferrer">
+
+                            📍 Directions
+
+                        </a>
+                    `;
+
+                }
+
+
+                let websiteHtml =
+                    "";
+
+
+                if (
+                    place.website
+                ) {
+
+                    websiteHtml = `
+                        <a
+                            class="website-btn"
+                            href="${escapeHtml(
+                                place.website
+                            )}"
+                            target="_blank"
+                            rel="noopener noreferrer">
+
+                            🌐 Website
+
+                        </a>
+                    `;
+
+                }
+
+
+                card.innerHTML = `
+
+                    <h3>
+                        🌿
+                        ${escapeHtml(
+                            place.name
+                            ||
+                            "Ayurveda Centre"
+                        )}
+                    </h3>
+
+                    <div class="centre-info">
+                        📍
+                        ${escapeHtml(
+                            place.address
+                            ||
+                            "Address not available"
+                        )}
+                    </div>
+
+                    ${typeHtml}
+
+                    ${ratingHtml}
+
+                    ${phoneHtml}
+
+                    <div class="centre-actions">
+                        ${directionHtml}
+                        ${websiteHtml}
+                    </div>
+
+                `;
+
+
+                if (
+                    place.latitude !== null
+                    &&
+                    place.latitude !== undefined
+                    &&
+                    place.longitude !== null
+                    &&
+                    place.longitude !== undefined
+                ) {
+
+                    card.style.cursor =
+                        "pointer";
+
+
+                    card.addEventListener(
+
+                        "click",
+
+                        function(event) {
+
+                            if (
+                                event.target.tagName
+                                === "A"
+                            ) {
+                                return;
+                            }
+
+
+                            showSearchMap(
+
+                                place.latitude,
+
+                                place.longitude,
+
+                                place.name,
+
+                                place.address
+
+                            );
+
+
+                            document
+                                .getElementById(
+                                    "mapSection"
+                                )
+                                .scrollIntoView({
+
+                                    behavior:
+                                        "smooth",
+
+                                    block:
+                                        "center"
+
+                                });
+
+                        }
+
+                    );
+
+                }
+
+
+                resultsBox.appendChild(
+                    card
+                );
+
+            }
+
+        );
+
+    }
+
+
+    /* =====================================================
+       SHOW GOOGLE MAP
+    ===================================================== */
+
+    function showSearchMap(
+        latitude,
+        longitude,
+        name,
+        address
+    ) {
+
+        if (
+            latitude === null
+            ||
+            latitude === undefined
+            ||
+            longitude === null
+            ||
+            longitude === undefined
+        ) {
+            return;
+        }
+
+
+        const mapSection =
+            document.getElementById(
+                "mapSection"
+            );
+
+
+        const map =
+            document.getElementById(
+                "searchMap"
+            );
+
+
+        const mapLocationText =
+            document.getElementById(
+                "mapLocationText"
+            );
+
+
+        let searchText =
+            name
+            ||
+            "Ayurveda Centre";
+
+
+        if (
+            address
+        ) {
+
+            searchText +=
+                " "
+                +
+                address;
+
+        }
+
+
+        const query =
+            encodeURIComponent(
+                searchText
+            );
+
+
+        map.src =
+            "https://maps.google.com/maps"
+            +
+            "?q="
+            +
+            query
+            +
+            "&z=15"
+            +
+            "&output=embed";
+
+
+        currentMapUrl =
+            "https://www.google.com/maps/search/"
+            +
+            "?api=1"
+            +
+            "&query="
+            +
+            query;
+
+
+        mapLocationText.textContent =
+            name
+            ||
+            "Ayurveda centre location";
+
+
+        mapSection.style.display =
+            "block";
+
+    }
+
+
+    /* =====================================================
+       OPEN GOOGLE MAPS
+    ===================================================== */
+
+    function openCurrentMap() {
+
+        if (
+            !currentMapUrl
+        ) {
+            return;
+        }
+
+
+        window.open(
+            currentMapUrl,
+            "_blank",
+            "noopener,noreferrer"
+        );
+
+    }
+
+
+    /* =====================================================
+       BACK TO TOP
+    ===================================================== */
+
+    window.addEventListener(
+        "scroll",
+
+        function() {
+
+            const button =
+                document.getElementById(
+                    "backToTop"
+                );
+
+
+            if (
+                window.scrollY > 500
+            ) {
+
+                button.style.display =
+                    "flex";
+
+            }
+
+            else {
+
+                button.style.display =
+                    "none";
+
+            }
+
+        }
+
+    );
+
+
+    function scrollToTop() {
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    }
+
+
+    /* =====================================================
+       ESCAPE HTML
+    ===================================================== */
+
+    function escapeHtml(
+        text
+    ) {
+
+        if (
+            text === null
+            ||
+            text === undefined
+        ) {
+
+            return "";
+
+        }
+
+
+        const element =
+            document.createElement(
+                "div"
+            );
+
+
+        element.textContent =
+            String(
+                text
+            );
+
+
+        return element.innerHTML;
+
+    }
+
+
+    /* =====================================================
+       ENTER KEY - QUESTION
+    ===================================================== */
+
+    document
+        .getElementById(
+            "questionInput"
+        )
+        .addEventListener(
+
+            "keydown",
+
+            function(event) {
+
+                if (
+                    event.key
+                    === "Enter"
+                ) {
+
+                    askQuestion();
+
+                }
+
+            }
+
+        );
+
+
+    /* =====================================================
+       ENTER KEY - CENTRE SEARCH
+    ===================================================== */
+
+    document
+        .getElementById(
+            "centreLocation"
+        )
+        .addEventListener(
+
+            "keydown",
+
+            function(event) {
+
+                if (
+                    event.key
+                    === "Enter"
+                ) {
+
+                    searchAyurvedaCentres();
+
+                }
+
+            }
+
+        );
+
+
+</script>
+
+
+</body>
+
+</html>

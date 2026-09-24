@@ -1,0 +1,16 @@
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+
+# Local runtime data
+chroma_db/
+uploaded_files/
+
+# Editor
+.vscode/
+.idea/
