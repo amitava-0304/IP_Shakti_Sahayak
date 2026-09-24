@@ -2141,6 +2141,44 @@
             input.files[0];
 
 
+        const allowedExtensions =
+            [
+                ".pdf",
+                ".txt",
+                ".docx"
+            ];
+
+
+        const lowerName =
+            file.name.toLowerCase();
+
+
+        const validType =
+            allowedExtensions.some(
+                function(extension) {
+
+                    return lowerName.endsWith(
+                        extension
+                    );
+
+                }
+            );
+
+
+        if (!validType) {
+
+            status.innerHTML = `
+                <div class="error-box">
+                    ❌ Unsupported file type.
+                    Please upload PDF, TXT or DOCX.
+                </div>
+            `;
+
+            return;
+
+        }
+
+
         const formData =
             new FormData();
 
@@ -2153,7 +2191,8 @@
 
         status.innerHTML = `
             <span class="spinner"></span>
-            Uploading and indexing document...
+            Uploading document...
+            Please wait.
         `;
 
 
@@ -2168,6 +2207,7 @@
                     {
                         method:
                             "POST",
+
                         body:
                             formData
                     }
@@ -2175,24 +2215,108 @@
                 );
 
 
-            const data =
-                await response.json();
+            /*
+               Read as text first.
+
+               Railway/FastAPI may sometimes return an HTML
+               error page for 502/503/504 responses. Calling
+               response.json() directly would throw an error
+               and only show the generic upload-failed message.
+            */
+
+            const rawText =
+                await response.text();
+
+
+            let data =
+                null;
+
+
+            try {
+
+                data =
+                    rawText
+                    ? JSON.parse(
+                        rawText
+                    )
+                    : {};
+
+            }
+
+            catch (jsonError) {
+
+                data = {
+                    error:
+                        rawText
+                        ||
+                        (
+                            "Backend returned HTTP "
+                            + response.status
+                            + "."
+                        )
+                };
+
+            }
+
+
+            if (!response.ok) {
+
+                const backendMessage =
+                    data.error
+                    ||
+                    data.detail
+                    ||
+                    data.message
+                    ||
+                    (
+                        "Upload failed with HTTP "
+                        + response.status
+                        + "."
+                    );
+
+
+                status.innerHTML = `
+                    <div class="error-box">
+                        ❌ ${escapeHtml(
+                            String(
+                                backendMessage
+                            )
+                        )}
+                    </div>
+                `;
+
+
+                console.error(
+                    "Upload HTTP error:",
+                    response.status,
+                    rawText
+                );
+
+
+                return;
+
+            }
 
 
             if (data.error) {
 
                 status.innerHTML = `
                     <div class="error-box">
-                        ❌ ${escapeHtml(data.error)}
+                        ❌ ${escapeHtml(
+                            String(
+                                data.error
+                            )
+                        )}
                     </div>
                 `;
+
+
+                return;
 
             }
 
 
-            else if (
-                data.warning
-            ) {
+            if (data.warning) {
 
                 status.innerHTML = `
                     <div class="warning-box">
@@ -2217,73 +2341,92 @@
                 input.value =
                     "";
 
+
+                return;
+
             }
 
 
-            else {
+            let message =
+                "✅ "
+                +
+                escapeHtml(
+                    data.message
+                    ||
+                    "Upload successful."
+                );
 
-                let message =
-                    "✅ "
+
+            if (
+                data.chunks_added
+                !== undefined
+            ) {
+
+                message +=
+                    "<br>📚 "
                     +
                     escapeHtml(
-                        data.message
-                        ||
-                        "Upload successful."
-                    );
-
-
-                if (
-                    data.chunks_added
-                    !== undefined
-                ) {
-
-                    message +=
-                        "<br>📚 "
-                        +
-                        escapeHtml(
-                            String(
-                                data.chunks_added
-                            )
+                        String(
+                            data.chunks_added
                         )
-                        +
-                        " chunks added.";
-
-                }
-
-
-                if (
-                    data.searchable
-                ) {
-
-                    message +=
-                        "<br>🔎 Document is now searchable.";
-
-                }
-
-
-                status.innerHTML = `
-                    <div class="success-box">
-                        ${message}
-                    </div>
-                `;
-
-
-                input.value =
-                    "";
+                    )
+                    +
+                    " chunks added.";
 
             }
+
+
+            if (
+                data.searchable
+            ) {
+
+                message +=
+                    "<br>🔎 Document is now searchable.";
+
+            }
+
+
+            status.innerHTML = `
+                <div class="success-box">
+                    ${message}
+                </div>
+            `;
+
+
+            input.value =
+                "";
 
         }
 
         catch (error) {
 
+            let message =
+                "Unable to connect to FastAPI backend.";
+
+
+            if (
+                error
+                &&
+                error.message
+            ) {
+
+                message +=
+                    " "
+                    +
+                    error.message;
+
+            }
+
+
             status.innerHTML = `
                 <div class="error-box">
-                    ❌ Upload failed. Check FastAPI backend.
+                    ❌ ${escapeHtml(message)}
                 </div>
             `;
 
+
             console.error(
+                "Upload error:",
                 error
             );
 
