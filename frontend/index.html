@@ -39,7 +39,7 @@
         }
 
         /* =================================================
-           MAIN APP amitava majumder
+           MAIN APP
         ================================================= */
 
         .app-container {
@@ -2215,15 +2215,6 @@
                 );
 
 
-            /*
-               Read as text first.
-
-               Railway/FastAPI may sometimes return an HTML
-               error page for 502/503/504 responses. Calling
-               response.json() directly would throw an error
-               and only show the generic upload-failed message.
-            */
-
             const rawText =
                 await response.text();
 
@@ -2347,6 +2338,58 @@
             }
 
 
+            /*
+               New background-indexing flow.
+
+               app.py returns a job_id immediately after
+               saving the uploaded file. The frontend then
+               polls /api/upload-status/{job_id} until the
+               document is completely indexed.
+            */
+
+            if (data.job_id) {
+
+                status.innerHTML = `
+                    <div class="warning-box">
+
+                        <span class="spinner"></span>
+
+                        ✅ File
+                        '${escapeHtml(file.name)}'
+                        uploaded successfully.
+
+                        <br><br>
+
+                        ⏳ Preparing document for indexing...
+
+                        <br>
+
+                        Please wait.
+
+                    </div>
+                `;
+
+
+                input.value =
+                    "";
+
+
+                monitorUploadJob(
+                    data.job_id,
+                    file.name
+                );
+
+
+                return;
+
+            }
+
+
+            /*
+               Backward-compatible success handling if the
+               backend does not return a job_id.
+            */
+
             let message =
                 "✅ "
                 +
@@ -2431,6 +2474,287 @@
             );
 
         }
+
+    }
+
+
+    /* =====================================================
+       MONITOR BACKGROUND DOCUMENT INDEXING
+    ===================================================== */
+
+    function monitorUploadJob(
+        jobId,
+        filename
+    ) {
+
+        const status =
+            document.getElementById(
+                "uploadStatus"
+            );
+
+
+        const timer =
+            setInterval(
+
+                async function() {
+
+                    try {
+
+                        const response =
+                            await fetch(
+
+                                API_URL
+                                + "/api/upload-status/"
+                                + encodeURIComponent(
+                                    jobId
+                                )
+
+                            );
+
+
+                        const rawText =
+                            await response.text();
+
+
+                        let data =
+                            null;
+
+
+                        try {
+
+                            data =
+                                rawText
+                                ? JSON.parse(
+                                    rawText
+                                )
+                                : {};
+
+                        }
+
+                        catch (jsonError) {
+
+                            data = {
+                                error:
+                                    rawText
+                                    ||
+                                    (
+                                        "Backend returned HTTP "
+                                        + response.status
+                                        + "."
+                                    )
+                            };
+
+                        }
+
+
+                        if (!response.ok) {
+
+                            clearInterval(
+                                timer
+                            );
+
+
+                            status.innerHTML = `
+                                <div class="error-box">
+
+                                    ❌ Unable to check
+                                    document indexing status.
+
+                                    <br><br>
+
+                                    ${escapeHtml(
+                                        String(
+                                            data.error
+                                            ||
+                                            data.detail
+                                            ||
+                                            (
+                                                "HTTP "
+                                                + response.status
+                                            )
+                                        )
+                                    )}
+
+                                </div>
+                            `;
+
+
+                            return;
+
+                        }
+
+
+                        if (
+                            data.status
+                            === "completed"
+                        ) {
+
+                            clearInterval(
+                                timer
+                            );
+
+
+                            status.innerHTML = `
+                                <div class="success-box">
+
+                                    ✅ File
+                                    '${escapeHtml(filename)}'
+                                    indexed successfully.
+
+                                    <br><br>
+
+                                    📚
+                                    ${escapeHtml(
+                                        String(
+                                            data.chunks
+                                            ||
+                                            0
+                                        )
+                                    )}
+                                    chunks added.
+
+                                    <br>
+
+                                    ⏱ Indexing time:
+                                    ${escapeHtml(
+                                        String(
+                                            data.elapsed_seconds
+                                            ||
+                                            0
+                                        )
+                                    )}
+                                    seconds.
+
+                                    <br>
+
+                                    🔎 Document is now searchable.
+
+                                </div>
+                            `;
+
+
+                            return;
+
+                        }
+
+
+                        if (
+                            data.status
+                            === "failed"
+                        ) {
+
+                            clearInterval(
+                                timer
+                            );
+
+
+                            status.innerHTML = `
+                                <div class="error-box">
+
+                                    ❌ Document indexing failed.
+
+                                    <br><br>
+
+                                    ${escapeHtml(
+                                        data.message
+                                        ||
+                                        "Unknown indexing error."
+                                    )}
+
+                                    <br><br>
+
+                                    ⏱ Elapsed time:
+                                    ${escapeHtml(
+                                        String(
+                                            data.elapsed_seconds
+                                            ||
+                                            0
+                                        )
+                                    )}
+                                    seconds.
+
+                                </div>
+                            `;
+
+
+                            return;
+
+                        }
+
+
+                        if (
+                            data.status
+                            === "unknown"
+                        ) {
+
+                            clearInterval(
+                                timer
+                            );
+
+
+                            status.innerHTML = `
+                                <div class="error-box">
+
+                                    ❌ Upload job was not found.
+
+                                </div>
+                            `;
+
+
+                            return;
+
+                        }
+
+
+                        status.innerHTML = `
+                            <div class="warning-box">
+
+                                <span class="spinner"></span>
+
+                                ✅ File uploaded successfully.
+
+                                <br><br>
+
+                                ⏳ Indexing document...
+
+                                <br>
+
+                                ⏱ Elapsed time:
+                                ${escapeHtml(
+                                    String(
+                                        data.elapsed_seconds
+                                        ||
+                                        0
+                                    )
+                                )}
+                                seconds.
+
+                                <br><br>
+
+                                Please wait.
+                                The message will update
+                                automatically when indexing
+                                is completed.
+
+                            </div>
+                        `;
+
+                    }
+
+                    catch (error) {
+
+                        console.error(
+                            "Upload status error:",
+                            error
+                        );
+
+                    }
+
+                },
+
+                2000
+
+            );
 
     }
 
