@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.github/
+.env
+local_pdfs/
+chroma_db/
+uploaded_files/
+uploaded_text/
+*.pdf
+.DS_Store

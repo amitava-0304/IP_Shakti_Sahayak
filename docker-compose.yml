@@ -1,0 +1,18 @@
+services:
+  ip-shakti:
+    build: .
+    container_name: ip-shakti-sahayak
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      STORAGE_ROOT: /app/storage
+      AUTO_INGEST_ON_START: "true"
+      REBUILD_MAIN_ON_START: "false"
+      CHROMA_BATCH_SIZE: "75"
+    volumes:
+      - ip_shakti_storage:/app/storage
+
+volumes:
+  ip_shakti_storage:
