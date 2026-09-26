@@ -9,3 +9,6 @@ python-multipart
 python-docx
 pydantic
 requests
+PyMuPDF
+pytesseract
+Pillow
