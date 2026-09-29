@@ -1,6 +1,8 @@
-# IP-SHAKTI Sahayak
+# AyurSetu AI
 
-**IP-SHAKTI Sahayak** is a multilingual RAG-based AI assistant for:
+**Connecting Traditional Wisdom with Modern AI**
+
+**AyurSetu AI** is a multilingual RAG-based AI assistant for:
 
 - Intellectual Property
 - Patents
@@ -25,20 +27,28 @@ The application supports **English, Bengali and Hindi** and combines:
 - Live indexing progress
 - Fast knowledge-base search
 
----
+
+
+> **Project branding:** The public project name is **AyurSetu AI**.  
+> Existing internal identifiers such as `ip_sakti_main`, `ip_sakti_uploads`,
+> SQLite database names, and the current GitHub repository URL are kept unchanged
+> to avoid breaking the deployed application.
 
 
 ---
 
-# 🌈 How IP-SHAKTI Sahayak Works
+
+---
+
+# 🌈 How AyurSetu AI Works
 
 <p align="center">
-  <img src="docs/how_ip_shakti_sahayak_works.png"
-       alt="IP-SHAKTI Sahayak Complete Workflow"
+  <img src="docs/ayursetu_ai_workflow.png"
+       alt="AyurSetu AI Complete Workflow"
        width="100%">
 </p>
 
-> 🚀 **IP-SHAKTI Sahayak** combines document ingestion, OCR, RAG search, semantic caching, AI answer generation, Docker, CI/CD, and Railway deployment into one complete workflow.
+> 🚀 **AyurSetu AI** combines document ingestion, OCR, RAG search, semantic caching, AI answer generation, Docker, CI/CD, and Railway deployment into one complete workflow.
 
 ---
 
@@ -124,6 +134,36 @@ It performs the following tasks:
 - ✅ handles Ayurveda centre search
 
 ---
+
+
+## 📍 Find Ayurveda Centres
+
+**AyurSetu AI** includes a location-aware Ayurveda centre search feature.
+
+Users can search Ayurveda centres by:
+
+- **City**
+- **State**
+- **Current location**
+
+### Powered by SerpAPI
+
+The Ayurveda centre search feature uses **SerpAPI**.
+
+```text
+User enters city/state/current location
+        ↓
+FastAPI backend
+        ↓
+SerpAPI
+        ↓
+Ayurveda centre search results
+        ↓
+Map / list display
+```
+
+This feature is integrated into the same web application but is separate from the document RAG pipeline.
+
 
 # 🔎 4. Search and Answer Flow
 
@@ -662,7 +702,7 @@ Example:
 
 ```powershell
 git add .
-git commit -m "Update IP-SHAKTI Sahayak"
+git commit -m "Update AyurSetu AI"
 git push origin main
 ```
 
@@ -835,7 +875,7 @@ Docker
  ↓
 Railway
  ↓
-IP-SHAKTI Sahayak
+AyurSetu AI
 ```
 
 ---
@@ -1484,6 +1524,26 @@ max_completion_tokens=1400
 
 ---
 
+
+# 🔌 API Integrations
+
+AyurSetu AI currently uses the following external APIs:
+
+| API | Purpose |
+|---|---|
+| **Google Gemini API** | Primary AI answer generation |
+| **Groq API** | Fallback AI answer generation |
+| **SerpAPI** | Ayurveda centre search by city, state, or current location |
+
+### Required Environment Variables
+
+```text
+GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
+SERPAPI_API_KEY=your_serpapi_api_key
+```
+
+
 # 21. Supported Languages
 
 The application supports:
@@ -1929,7 +1989,7 @@ git status
 
 git add .
 
-git commit -m "Update IP-SHAKTI Sahayak"
+git commit -m "Update AyurSetu AI"
 
 git push origin main
 ```
@@ -2094,7 +2154,7 @@ git status
 
 # 47. Project Goal
 
-The goal of IP-SHAKTI Sahayak is to provide a multilingual, source-grounded educational assistant that can:
+The goal of AyurSetu AI is to provide a multilingual, source-grounded educational assistant that can:
 
 - explain Intellectual Property concepts
 - answer questions from uploaded documents
@@ -2107,5 +2167,12 @@ The goal of IP-SHAKTI Sahayak is to provide a multilingual, source-grounded educ
 
 ---
 
-**IP-SHAKTI Sahayak**  
+**AyurSetu AI**  
 Multilingual RAG Assistant for Intellectual Property, Traditional Knowledge and Ayurveda.
+
+
+## 🔗 Project Links
+
+- **GitHub Repository:** https://github.com/amitava-0304/IP_Shakti_Sahayak
+- **Live Project:** https://web-production-596c7.up.railway.app/
+
