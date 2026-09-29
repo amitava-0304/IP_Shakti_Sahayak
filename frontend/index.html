@@ -2715,7 +2715,52 @@
 
                                 <br><br>
 
-                                ⏳ Indexing document...
+                                ⏳ ${escapeHtml(
+                                    data.message
+                                    ||
+                                    "Indexing document..."
+                                )}
+
+                                <br><br>
+
+                                ${
+                                    data.total_pages
+                                    ? (
+                                        "📄 Page "
+                                        + escapeHtml(
+                                            String(
+                                                data.current_page
+                                                || 0
+                                            )
+                                        )
+                                        + " / "
+                                        + escapeHtml(
+                                            String(
+                                                data.total_pages
+                                            )
+                                        )
+                                        + "<br>"
+                                        + "📊 Progress: "
+                                        + escapeHtml(
+                                            String(
+                                                data.progress_percent
+                                                || 0
+                                            )
+                                        )
+                                        + "%"
+                                        + "<br>"
+                                    )
+                                    : ""
+                                }
+
+                                📚 Chunks indexed:
+                                ${escapeHtml(
+                                    String(
+                                        data.chunks
+                                        ||
+                                        0
+                                    )
+                                )}
 
                                 <br>
 
@@ -2731,10 +2776,9 @@
 
                                 <br><br>
 
-                                Please wait.
-                                The message will update
-                                automatically when indexing
-                                is completed.
+                                The job state is stored
+                                persistently and can resume
+                                after a Railway restart.
 
                             </div>
                         `;

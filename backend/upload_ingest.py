@@ -1,28 +1,25 @@
+import gc
 import os
 import re
 import uuid
-import gc
 from pathlib import Path
 
 import chromadb
-from dotenv import load_dotenv
-from pypdf import PdfReader
-from docx import Document
-
-import fitz  # PyMuPDF
+import fitz
 import pytesseract
 from PIL import Image
+from docx import Document
+from dotenv import load_dotenv
+from pypdf import PdfReader
 
+try:
+    from .job_store import get_job, update_job
+except ImportError:
+    from job_store import get_job, update_job
 
-# =========================================================
-# PATHS / ENVIRONMENT
-# =========================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-load_dotenv(
-    PROJECT_ROOT / ".env"
-)
+load_dotenv(PROJECT_ROOT / ".env")
 
 STORAGE_ROOT = Path(
     os.getenv(
@@ -31,27 +28,13 @@ STORAGE_ROOT = Path(
     )
 )
 
-VECTOR_FOLDER = (
-    STORAGE_ROOT / "chroma_db"
-)
+VECTOR_FOLDER = STORAGE_ROOT / "chroma_db"
+UPLOADED_TEXT_FOLDER = STORAGE_ROOT / "uploaded_text"
 
-UPLOADED_TEXT_FOLDER = (
-    STORAGE_ROOT / "uploaded_text"
-)
+VECTOR_FOLDER.mkdir(parents=True, exist_ok=True)
+UPLOADED_TEXT_FOLDER.mkdir(parents=True, exist_ok=True)
 
-VECTOR_FOLDER.mkdir(
-    parents=True,
-    exist_ok=True
-)
-
-UPLOADED_TEXT_FOLDER.mkdir(
-    parents=True,
-    exist_ok=True
-)
-
-UPLOAD_COLLECTION = (
-    "ip_sakti_uploads"
-)
+UPLOAD_COLLECTION = "ip_sakti_uploads"
 
 client = chromadb.PersistentClient(
     path=str(VECTOR_FOLDER)
@@ -64,19 +47,15 @@ def get_upload_collection():
     )
 
 
-# =========================================================
-# LOW-MEMORY SETTINGS
-# =========================================================
-
 OCR_LANGUAGES = os.getenv(
     "OCR_LANGUAGES",
-    "eng+ben+hin"
+    "eng"
 )
 
 OCR_DPI = int(
     os.getenv(
         "OCR_DPI",
-        "110"
+        "90"
     )
 )
 
@@ -90,49 +69,30 @@ OCR_MIN_PAGE_TEXT = int(
 UPLOAD_CHUNK_SIZE = int(
     os.getenv(
         "UPLOAD_CHUNK_SIZE",
-        "900"
+        "700"
     )
 )
 
 UPLOAD_CHUNK_OVERLAP = int(
     os.getenv(
         "UPLOAD_CHUNK_OVERLAP",
-        "120"
+        "80"
     )
 )
 
 CHROMA_BATCH_SIZE = int(
     os.getenv(
         "CHROMA_BATCH_SIZE",
-        "25"
+        "10"
     )
 )
 
 
-# =========================================================
-# TEXT HELPERS
-# =========================================================
-
 def clean_text(text):
     text = text or ""
-
-    text = text.replace(
-        "\x00",
-        " "
-    )
-
-    text = re.sub(
-        r"[ \t]+",
-        " ",
-        text
-    )
-
-    text = re.sub(
-        r"\n{3,}",
-        "\n\n",
-        text
-    )
-
+    text = text.replace("\x00", " ")
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
@@ -147,22 +107,16 @@ def chunk_text(
         return []
 
     chunks = []
-
     start = 0
-
     text_length = len(text)
 
     while start < text_length:
-
         end = min(
             start + chunk_size,
             text_length
         )
 
-        chunk = (
-            text[start:end]
-            .strip()
-        )
+        chunk = text[start:end].strip()
 
         if chunk:
             chunks.append(chunk)
@@ -178,9 +132,151 @@ def chunk_text(
     return chunks
 
 
-# =========================================================
-# OCR ONE PAGE
-# =========================================================
+def get_output_text_path(filename):
+    return (
+        UPLOADED_TEXT_FOLDER
+        / (
+            Path(filename).stem
+            + ".txt"
+        )
+    )
+
+
+def append_page_text(
+    output_path,
+    page_number,
+    text
+):
+    with open(
+        output_path,
+        "a",
+        encoding="utf-8"
+    ) as file:
+        file.write(
+            f"===== PAGE {page_number} =====\n"
+        )
+        file.write(
+            clean_text(text)
+        )
+        file.write(
+            "\n\n"
+        )
+
+
+def write_single_text(
+    output_path,
+    text
+):
+    with open(
+        output_path,
+        "w",
+        encoding="utf-8"
+    ) as file:
+        file.write(
+            clean_text(text)
+        )
+
+
+def delete_previous_file_chunks(
+    collection,
+    filename
+):
+    try:
+        collection.delete(
+            where={
+                "source": filename
+            }
+        )
+    except Exception as error:
+        print(
+            f"Previous upload cleanup warning: {error}",
+            flush=True
+        )
+
+
+def build_chunk_id(
+    job_id,
+    page_number,
+    chunk_number
+):
+    return (
+        f"{job_id}:"
+        f"{page_number}:"
+        f"{chunk_number}"
+    )
+
+
+def index_page_chunks(
+    collection,
+    job_id,
+    filename,
+    page_number,
+    text,
+    ocr_used
+):
+    chunks = chunk_text(text)
+
+    total_added = 0
+
+    for start in range(
+        0,
+        len(chunks),
+        CHROMA_BATCH_SIZE
+    ):
+        batch = chunks[
+            start:
+            start + CHROMA_BATCH_SIZE
+        ]
+
+        documents = []
+        metadatas = []
+        ids = []
+
+        for offset, chunk in enumerate(
+            batch,
+            start=start + 1
+        ):
+            documents.append(chunk)
+
+            metadatas.append(
+                {
+                    "source": filename,
+                    "category": "uploaded",
+                    "page": str(page_number),
+                    "uploaded": True,
+                    "ocr": bool(ocr_used),
+                    "chunk": offset,
+                    "job_id": job_id
+                }
+            )
+
+            ids.append(
+                build_chunk_id(
+                    job_id,
+                    page_number,
+                    offset
+                )
+            )
+
+        # upsert makes restart/resume safe.
+        collection.upsert(
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids
+        )
+
+        total_added += len(batch)
+
+        del documents
+        del metadatas
+        del ids
+        gc.collect()
+
+    del chunks
+    gc.collect()
+
+    return total_added
+
 
 def ocr_pdf_page(
     pdf_document,
@@ -191,7 +287,6 @@ def ocr_pdf_page(
     image = None
 
     try:
-
         page = pdf_document.load_page(
             page_index
         )
@@ -210,218 +305,42 @@ def ocr_pdf_page(
             pix.samples
         )
 
-        text = (
-            pytesseract.image_to_string(
-                image,
-                lang=OCR_LANGUAGES,
-                config="--psm 6"
-            )
+        text = pytesseract.image_to_string(
+            image,
+            lang=OCR_LANGUAGES,
+            config="--psm 6"
         )
 
-        return clean_text(
-            text
-        )
+        return clean_text(text)
 
     finally:
-
         if image is not None:
             image.close()
 
         del image
         del pix
         del page
-
         gc.collect()
 
 
-# =========================================================
-# PDF EXTRACTION
-# =========================================================
-
-def extract_pdf_sections(
-    file_path
-):
-    """
-    Low-memory hybrid PDF extraction.
-
-    For each page:
-    1. Try pypdf.
-    2. If page has little/no text, OCR only that page.
-    3. Release image memory before moving to next page.
-    """
-
-    reader = PdfReader(
-        str(file_path)
-    )
-
-    pdf_document = fitz.open(
-        str(file_path)
-    )
-
-    sections = []
-
-    ocr_pages = 0
-
-    try:
-
-        total_pages = len(
-            reader.pages
-        )
-
-        for index in range(
-            total_pages
-        ):
-
-            page_number = (
-                index + 1
-            )
-
-            text = ""
-
-            try:
-
-                text = (
-                    reader.pages[index]
-                    .extract_text()
-                    or ""
-                )
-
-                text = clean_text(
-                    text
-                )
-
-            except Exception as error:
-
-                print(
-                    f"pypdf extraction failed "
-                    f"on page {page_number}: "
-                    f"{error}",
-                    flush=True
-                )
-
-                text = ""
-
-            used_ocr = False
-
-            if (
-                len(text)
-                < OCR_MIN_PAGE_TEXT
-            ):
-
-                print(
-                    f"OCR page {page_number}...",
-                    flush=True
-                )
-
-                try:
-
-                    text = ocr_pdf_page(
-                        pdf_document,
-                        index
-                    )
-
-                    if text:
-                        used_ocr = True
-                        ocr_pages += 1
-
-                except Exception as error:
-
-                    print(
-                        f"OCR failed on page "
-                        f"{page_number}: "
-                        f"{error}",
-                        flush=True
-                    )
-
-                    text = ""
-
-            if text:
-
-                sections.append(
-                    {
-                        "page":
-                            page_number,
-
-                        "text":
-                            text,
-
-                        "ocr":
-                            used_ocr
-                    }
-                )
-
-            gc.collect()
-
-    finally:
-
-        pdf_document.close()
-
-        del reader
-        del pdf_document
-
-        gc.collect()
-
-    return (
-        sections,
-        ocr_pages
-    )
-
-
-# =========================================================
-# TXT EXTRACTION
-# =========================================================
-
-def extract_txt(
-    file_path
-):
-    with open(
-        file_path,
-        "r",
-        encoding="utf-8",
-        errors="ignore"
-    ) as file:
-
-        return clean_text(
-            file.read()
-        )
-
-
-# =========================================================
-# DOCX EXTRACTION
-# =========================================================
-
-def extract_docx(
-    file_path
-):
+def extract_docx_text(file_path):
     document = Document(
         str(file_path)
     )
 
     parts = []
 
-    for paragraph in (
-        document.paragraphs
-    ):
-
+    for paragraph in document.paragraphs:
         text = clean_text(
             paragraph.text
         )
-
         if text:
-            parts.append(
-                text
-            )
+            parts.append(text)
 
-    for table in (
-        document.tables
-    ):
-
+    for table in document.tables:
         for row in table.rows:
-
             cells = [
-                clean_text(
-                    cell.text
-                )
+                clean_text(cell.text)
                 for cell in row.cells
             ]
 
@@ -432,244 +351,332 @@ def extract_docx(
             )
 
             if line:
-                parts.append(
-                    line
-                )
+                parts.append(line)
 
     return clean_text(
         "\n".join(parts)
     )
 
 
-# =========================================================
-# SAVE EXTRACTED TEXT
-# =========================================================
-
-def save_extracted_text(
-    source_filename,
-    sections
+def ingest_text_or_docx(
+    file_path,
+    job_id
 ):
-    output_name = (
-        Path(source_filename).stem
-        + ".txt"
+    filename = file_path.name
+    extension = file_path.suffix.lower()
+
+    update_job(
+        job_id,
+        stage="extracting",
+        current_page=0,
+        total_pages=1,
+        message="Extracting document text."
     )
 
-    output_path = (
-        UPLOADED_TEXT_FOLDER
-        / output_name
+    if extension == ".txt":
+        with open(
+            file_path,
+            "r",
+            encoding="utf-8",
+            errors="ignore"
+        ) as file:
+            text = clean_text(
+                file.read()
+            )
+    else:
+        text = extract_docx_text(
+            file_path
+        )
+
+    if not text:
+        return {
+            "success": False,
+            "message":
+                "No readable text was found."
+        }
+
+    output_path = get_output_text_path(
+        filename
     )
 
-    with open(
+    write_single_text(
         output_path,
-        "w",
-        encoding="utf-8"
-    ) as file:
-
-        for section in sections:
-
-            page = section.get(
-                "page",
-                "Unknown"
-            )
-
-            if (
-                page
-                != "Unknown"
-            ):
-
-                file.write(
-                    f"===== PAGE {page} =====\n"
-                )
-
-            file.write(
-                section.get(
-                    "text",
-                    ""
-                ).strip()
-            )
-
-            file.write(
-                "\n\n"
-            )
-
-    return output_path
-
-
-# =========================================================
-# DELETE PREVIOUS VERSION
-# =========================================================
-
-def delete_previous_file_chunks(
-    collection,
-    filename
-):
-    try:
-
-        collection.delete(
-            where={
-                "source":
-                    filename
-            }
-        )
-
-    except Exception as error:
-
-        print(
-            "Previous upload cleanup "
-            f"warning: {error}",
-            flush=True
-        )
-
-
-# =========================================================
-# STREAM CHUNKS TO CHROMA
-# =========================================================
-
-def index_sections(
-    filename,
-    sections
-):
-    """
-    Index chunks in small batches.
-    Avoid keeping all document chunks in memory.
-    """
-
-    collection = (
-        get_upload_collection()
+        text
     )
+
+    collection = get_upload_collection()
 
     delete_previous_file_chunks(
         collection,
         filename
     )
 
-    batch_documents = []
-    batch_metadatas = []
-    batch_ids = []
+    chunks = index_page_chunks(
+        collection,
+        job_id,
+        filename,
+        1,
+        text,
+        False
+    )
 
-    total_chunks = 0
+    update_job(
+        job_id,
+        stage="indexing",
+        current_page=1,
+        total_pages=1,
+        chunks=chunks,
+        message="Document text indexed."
+    )
 
-    def flush_batch():
+    return {
+        "success": True,
+        "chunks": chunks,
+        "ocr_pages": 0,
+        "total_pages": 1,
+        "searchable": True
+    }
 
-        nonlocal total_chunks
 
-        if not batch_documents:
-            return
+def ingest_pdf_streaming(
+    file_path,
+    job_id
+):
+    """
+    True page-streaming PDF pipeline.
 
-        collection.add(
-            documents=
-                batch_documents,
+    It does NOT store the text of the entire PDF in RAM.
+    Each page is:
+      extract -> optional OCR -> append to TXT ->
+      chunk -> Chroma upsert -> release memory.
 
-            metadatas=
-                batch_metadatas,
+    current_page is saved after every page, so after a service
+    restart the worker resumes from the next page.
+    """
+    filename = file_path.name
 
-            ids=
-                batch_ids
+    reader = PdfReader(
+        str(file_path)
+    )
+
+    total_pages = len(
+        reader.pages
+    )
+
+    if total_pages <= 0:
+        return {
+            "success": False,
+            "message": "PDF contains no pages."
+        }
+
+    job = get_job(job_id) or {}
+
+    last_completed_page = int(
+        job.get(
+            "current_page",
+            0
+        )
+        or 0
+    )
+
+    total_chunks = int(
+        job.get(
+            "chunks",
+            0
+        )
+        or 0
+    )
+
+    output_path = get_output_text_path(
+        filename
+    )
+
+    collection = get_upload_collection()
+
+    # New job: clear previous same-filename chunks and extracted text.
+    if last_completed_page <= 0:
+        delete_previous_file_chunks(
+            collection,
+            filename
         )
 
-        total_chunks += len(
-            batch_documents
+        with open(
+            output_path,
+            "w",
+            encoding="utf-8"
+        ) as file:
+            file.write("")
+
+    update_job(
+        job_id,
+        status="processing",
+        stage="extracting",
+        total_pages=total_pages,
+        message=(
+            f"Processing page "
+            f"{last_completed_page + 1} "
+            f"of {total_pages}."
         )
+    )
 
-        batch_documents.clear()
-        batch_metadatas.clear()
-        batch_ids.clear()
+    pdf_document = fitz.open(
+        str(file_path)
+    )
 
-        gc.collect()
+    ocr_pages = 0
 
-    for section in sections:
-
-        page = section.get(
-            "page",
-            "Unknown"
-        )
-
-        ocr_used = bool(
-            section.get(
-                "ocr",
-                False
-            )
-        )
-
-        chunks = chunk_text(
-            section.get(
-                "text",
-                ""
-            )
-        )
-
-        for chunk_number, chunk in (
-            enumerate(
-                chunks,
-                start=1
-            )
+    try:
+        for page_index in range(
+            last_completed_page,
+            total_pages
         ):
+            page_number = page_index + 1
 
-            batch_documents.append(
-                chunk
-            )
+            text = ""
+            used_ocr = False
 
-            batch_metadatas.append(
-                {
-                    "source":
-                        filename,
+            try:
+                text = (
+                    reader.pages[
+                        page_index
+                    ].extract_text()
+                    or ""
+                )
 
-                    "category":
-                        "uploaded",
+                text = clean_text(
+                    text
+                )
 
-                    "page":
-                        str(page),
+            except Exception as error:
+                print(
+                    f"pypdf failed on page "
+                    f"{page_number}: {error}",
+                    flush=True
+                )
+                text = ""
 
-                    "uploaded":
-                        True,
+            if (
+                len(text)
+                < OCR_MIN_PAGE_TEXT
+            ):
+                update_job(
+                    job_id,
+                    status="ocr",
+                    stage="ocr",
+                    current_page=page_number - 1,
+                    total_pages=total_pages,
+                    chunks=total_chunks,
+                    message=(
+                        f"OCR processing page "
+                        f"{page_number} of "
+                        f"{total_pages}."
+                    )
+                )
 
-                    "ocr":
-                        ocr_used,
+                try:
+                    text = ocr_pdf_page(
+                        pdf_document,
+                        page_index
+                    )
 
-                    "chunk":
-                        chunk_number
-                }
-            )
+                    if text:
+                        used_ocr = True
+                        ocr_pages += 1
 
-            batch_ids.append(
-                str(
-                    uuid.uuid4()
+                except Exception as error:
+                    print(
+                        f"OCR failed on page "
+                        f"{page_number}: {error}",
+                        flush=True
+                    )
+                    text = ""
+
+            if text:
+                append_page_text(
+                    output_path,
+                    page_number,
+                    text
+                )
+
+                update_job(
+                    job_id,
+                    status="processing",
+                    stage="indexing",
+                    current_page=page_number - 1,
+                    total_pages=total_pages,
+                    chunks=total_chunks,
+                    message=(
+                        f"Indexing page "
+                        f"{page_number} of "
+                        f"{total_pages}."
+                    )
+                )
+
+                added = index_page_chunks(
+                    collection,
+                    job_id,
+                    filename,
+                    page_number,
+                    text,
+                    used_ocr
+                )
+
+                total_chunks += added
+
+            # Commit page progress only after its extraction/indexing is done.
+            update_job(
+                job_id,
+                status="processing",
+                stage="processing",
+                current_page=page_number,
+                total_pages=total_pages,
+                chunks=total_chunks,
+                message=(
+                    f"Completed page "
+                    f"{page_number} of "
+                    f"{total_pages}."
                 )
             )
 
-            if (
-                len(batch_documents)
-                >= CHROMA_BATCH_SIZE
-            ):
+            del text
+            gc.collect()
 
-                flush_batch()
+    finally:
+        pdf_document.close()
 
-        del chunks
-
+        del pdf_document
+        del reader
         gc.collect()
 
-    flush_batch()
+    if total_chunks <= 0:
+        return {
+            "success": False,
+            "message":
+                "No readable text was found. "
+                "OCR was attempted but no searchable "
+                "content could be created."
+        }
 
-    return total_chunks
+    return {
+        "success": True,
+        "chunks": total_chunks,
+        "ocr_pages": ocr_pages,
+        "total_pages": total_pages,
+        "searchable": True
+    }
 
-
-# =========================================================
-# MAIN FUNCTION USED BY app.py
-# =========================================================
 
 def ingest_uploaded_file(
-    file_path
+    file_path,
+    job_id
 ):
     file_path = Path(
         file_path
     )
 
     if not file_path.exists():
-
         return {
-            "success":
-                False,
-
+            "success": False,
             "message":
                 "Uploaded file was not found."
         }
@@ -678,160 +685,34 @@ def ingest_uploaded_file(
         file_path.suffix.lower()
     )
 
-    filename = (
-        file_path.name
-    )
-
     try:
+        if extension == ".pdf":
+            return ingest_pdf_streaming(
+                file_path,
+                job_id
+            )
 
-        ocr_pages = 0
-
-        if (
-            extension
-            == ".pdf"
+        if extension in (
+            ".txt",
+            ".docx"
         ):
-
-            sections, ocr_pages = (
-                extract_pdf_sections(
-                    file_path
-                )
+            return ingest_text_or_docx(
+                file_path,
+                job_id
             )
-
-        elif (
-            extension
-            == ".txt"
-        ):
-
-            text = extract_txt(
-                file_path
-            )
-
-            sections = [
-                {
-                    "page":
-                        "Unknown",
-
-                    "text":
-                        text,
-
-                    "ocr":
-                        False
-                }
-            ]
-
-        elif (
-            extension
-            == ".docx"
-        ):
-
-            text = extract_docx(
-                file_path
-            )
-
-            sections = [
-                {
-                    "page":
-                        "Unknown",
-
-                    "text":
-                        text,
-
-                    "ocr":
-                        False
-                }
-            ]
-
-        else:
-
-            return {
-                "success":
-                    False,
-
-                "message":
-                    "Unsupported file type. "
-                    "Please upload PDF, "
-                    "TXT or DOCX."
-            }
-
-        sections = [
-            item
-            for item in sections
-            if clean_text(
-                item.get(
-                    "text",
-                    ""
-                )
-            )
-        ]
-
-        if not sections:
-
-            return {
-                "success":
-                    False,
-
-                "message":
-                    "No readable text was found. "
-                    "OCR was attempted, but "
-                    "no usable text could be detected."
-            }
-
-        save_extracted_text(
-            filename,
-            sections
-        )
-
-        total_chunks = (
-            index_sections(
-                filename,
-                sections
-            )
-        )
-
-        del sections
-
-        gc.collect()
-
-        if (
-            total_chunks
-            <= 0
-        ):
-
-            return {
-                "success":
-                    False,
-
-                "message":
-                    "Text was extracted, "
-                    "but no searchable chunks "
-                    "could be created."
-            }
 
         return {
-            "success":
-                True,
-
+            "success": False,
             "message":
-                "Document indexed successfully.",
-
-            "chunks":
-                total_chunks,
-
-            "ocr_pages":
-                ocr_pages,
-
-            "searchable":
-                True
+                "Unsupported file type. "
+                "Please upload PDF, TXT or DOCX."
         }
 
     except Exception as error:
-
         gc.collect()
 
         return {
-            "success":
-                False,
-
+            "success": False,
             "message":
                 "Document indexing failed: "
                 + str(error)
