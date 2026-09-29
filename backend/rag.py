@@ -1,9 +1,12 @@
 import os
 import time
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Lock
 
 import chromadb
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 from dotenv import load_dotenv
 
 
@@ -12,7 +15,6 @@ from dotenv import load_dotenv
 # =========================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
 load_dotenv(PROJECT_ROOT / ".env")
 
 STORAGE_ROOT = Path(
@@ -32,8 +34,6 @@ VECTOR_FOLDER.mkdir(
     exist_ok=True
 )
 
-# Search both Chroma collections concurrently after creating
-# the query embedding only once.
 RAG_PARALLEL_SEARCH = (
     os.getenv(
         "RAG_PARALLEL_SEARCH",
@@ -41,12 +41,24 @@ RAG_PARALLEL_SEARCH = (
     )
     .strip()
     .lower()
-    in {
-        "1",
-        "true",
-        "yes",
-        "on"
-    }
+    in {"1", "true", "yes", "on"}
+)
+
+RAG_WARMUP_EMBEDDING = (
+    os.getenv(
+        "RAG_WARMUP_EMBEDDING",
+        "true"
+    )
+    .strip()
+    .lower()
+    in {"1", "true", "yes", "on"}
+)
+
+RAG_QUERY_CACHE_SIZE = int(
+    os.getenv(
+        "RAG_QUERY_CACHE_SIZE",
+        "100"
+    )
 )
 
 
@@ -60,7 +72,142 @@ client = chromadb.PersistentClient(
 
 
 # =========================================================
-# ALWAYS GET FRESH COLLECTION HANDLES
+# SINGLE PERSISTENT EMBEDDING FUNCTION
+#
+# Important:
+# Creating/fetching a collection repeatedly can expose a fresh
+# DefaultEmbeddingFunction object. The actual query embedding was
+# taking ~5 seconds in Railway. This singleton stays alive for the
+# lifetime of the FastAPI process, so the ONNX model is loaded once.
+# =========================================================
+
+QUERY_EMBEDDING_FUNCTION = DefaultEmbeddingFunction()
+
+_embedding_lock = Lock()
+_embedding_cache_lock = Lock()
+
+# Small LRU cache for repeated/similar exact questions.
+_embedding_cache = OrderedDict()
+
+
+def _normalise_embedding(embedding):
+    if hasattr(embedding, "tolist"):
+        return embedding.tolist()
+
+    return list(embedding)
+
+
+def _cache_get(query):
+    with _embedding_cache_lock:
+        if query not in _embedding_cache:
+            return None
+
+        embedding = _embedding_cache.pop(query)
+        _embedding_cache[query] = embedding
+        return embedding
+
+
+def _cache_put(query, embedding):
+    if RAG_QUERY_CACHE_SIZE <= 0:
+        return
+
+    with _embedding_cache_lock:
+        if query in _embedding_cache:
+            _embedding_cache.pop(query)
+
+        _embedding_cache[query] = embedding
+
+        while (
+            len(_embedding_cache)
+            > RAG_QUERY_CACHE_SIZE
+        ):
+            _embedding_cache.popitem(
+                last=False
+            )
+
+
+def create_query_embedding(query):
+    cached = _cache_get(query)
+
+    if cached is not None:
+        print(
+            "RAG query embedding time: "
+            "0.000 seconds (cache hit)",
+            flush=True
+        )
+        return cached
+
+    started = time.perf_counter()
+
+    # Protect the singleton inference object from simultaneous calls.
+    with _embedding_lock:
+        embeddings = QUERY_EMBEDDING_FUNCTION(
+            [query]
+        )
+
+    embedding = _normalise_embedding(
+        embeddings[0]
+    )
+
+    elapsed = round(
+        time.perf_counter() - started,
+        3
+    )
+
+    _cache_put(
+        query,
+        embedding
+    )
+
+    print(
+        f"RAG query embedding time: "
+        f"{elapsed} seconds",
+        flush=True
+    )
+
+    return embedding
+
+
+def warm_up_embedding_model():
+    if not RAG_WARMUP_EMBEDDING:
+        return
+
+    started = time.perf_counter()
+
+    try:
+        # Do not cache this artificial warm-up query.
+        with _embedding_lock:
+            QUERY_EMBEDDING_FUNCTION(
+                ["IP SHAKTI embedding model warmup"]
+            )
+
+        elapsed = round(
+            time.perf_counter() - started,
+            3
+        )
+
+        print(
+            f"RAG embedding model warmed up "
+            f"in {elapsed} seconds.",
+            flush=True
+        )
+
+    except Exception as error:
+        print(
+            "RAG embedding warmup failed: "
+            f"{error}",
+            flush=True
+        )
+
+
+# Warm up once when backend.rag is imported.
+# This moves model initialization cost to application startup
+# instead of making the user wait on the first question.
+warm_up_embedding_model()
+
+
+# =========================================================
+# FRESH COLLECTION HANDLES
 # =========================================================
 
 def get_main_collection():
@@ -124,96 +271,11 @@ def _result_to_rows(result):
 
 
 # =========================================================
-# CREATE QUERY EMBEDDING ONCE
-# =========================================================
-
-def _create_query_embedding(
-    query,
-    main_collection,
-    upload_collection,
-    main_count,
-    upload_count
-):
-    """
-    Chroma's query_texts path embeds the same question again for
-    every collection. Because both project collections were created
-    using the same default embedding configuration, we can create the
-    question embedding once and reuse it for both searches.
-
-    If Chroma's internal embedding-function API changes, this returns
-    None and search_documents() automatically falls back to the old,
-    compatible query_texts path.
-    """
-
-    collection = None
-
-    if main_count > 0:
-        collection = main_collection
-    elif upload_count > 0:
-        collection = upload_collection
-
-    if collection is None:
-        return None
-
-    try:
-        embedding_function = getattr(
-            collection,
-            "_embedding_function",
-            None
-        )
-
-        if embedding_function is None:
-            return None
-
-        started = time.perf_counter()
-
-        embeddings = embedding_function(
-            [query]
-        )
-
-        elapsed = round(
-            time.perf_counter() - started,
-            3
-        )
-
-        print(
-            f"RAG query embedding time: "
-            f"{elapsed} seconds",
-            flush=True
-        )
-
-        if embeddings is None:
-            return None
-
-        # Convert the first embedding to a normal Python list.
-        embedding = embeddings[0]
-
-        if hasattr(
-            embedding,
-            "tolist"
-        ):
-            embedding = embedding.tolist()
-        else:
-            embedding = list(embedding)
-
-        return embedding
-
-    except Exception as error:
-        print(
-            "Single query embedding optimization "
-            f"not available: {error}",
-            flush=True
-        )
-        return None
-
-
-# =========================================================
-# QUERY ONE COLLECTION
+# QUERY COLLECTION USING PRECOMPUTED EMBEDDING
 # =========================================================
 
 def _query_collection_object(
     collection,
-    query,
     query_embedding,
     top_k,
     count
@@ -223,29 +285,19 @@ def _query_collection_object(
 
     started = time.perf_counter()
 
-    query_args = {
-        "n_results": min(
+    result = collection.query(
+        query_embeddings=[
+            query_embedding
+        ],
+        n_results=min(
             top_k,
             count
         ),
-        "include": [
+        include=[
             "documents",
             "metadatas",
             "distances"
         ]
-    }
-
-    if query_embedding is not None:
-        query_args[
-            "query_embeddings"
-        ] = [query_embedding]
-    else:
-        query_args[
-            "query_texts"
-        ] = [query]
-
-    result = collection.query(
-        **query_args
     )
 
     elapsed = round(
@@ -269,11 +321,6 @@ def query_collection(
     query,
     top_k
 ):
-    """
-    Compatibility helper retained for any code that calls this
-    function directly.
-    """
-
     if collection_name == MAIN_COLLECTION:
         collection = get_main_collection()
     else:
@@ -281,17 +328,25 @@ def query_collection(
 
     count = collection.count()
 
+    if count <= 0:
+        return []
+
+    query_embedding = (
+        create_query_embedding(
+            query
+        )
+    )
+
     return _query_collection_object(
         collection,
-        query,
-        None,
+        query_embedding,
         top_k,
         count
     )
 
 
 # =========================================================
-# SEARCH BOTH COLLECTIONS - OPTIMIZED
+# SEARCH BOTH COLLECTIONS
 # =========================================================
 
 def search_documents(
@@ -310,8 +365,6 @@ def search_documents(
 
     total_started = time.perf_counter()
 
-    # Fresh handles prevent stale collection UUID errors after
-    # a knowledge-base rebuild.
     main_collection = get_main_collection()
     upload_collection = get_upload_collection()
 
@@ -328,7 +381,8 @@ def search_documents(
     print(
         f"Chroma count time: "
         f"{count_elapsed} seconds "
-        f"(main={main_count}, uploads={upload_count})",
+        f"(main={main_count}, "
+        f"uploads={upload_count})",
         flush=True
     )
 
@@ -338,22 +392,16 @@ def search_documents(
     ):
         return []
 
-    # Biggest optimization: embed the user's question once instead
-    # of once for the main collection and again for uploads.
-    query_embedding = _create_query_embedding(
-        query,
-        main_collection,
-        upload_collection,
-        main_count,
-        upload_count
+    # Query is embedded exactly once.
+    query_embedding = (
+        create_query_embedding(
+            query
+        )
     )
-
-    combined = []
 
     def search_main():
         return _query_collection_object(
             main_collection,
-            query,
             query_embedding,
             top_k,
             main_count
@@ -362,14 +410,13 @@ def search_documents(
     def search_uploads():
         return _query_collection_object(
             upload_collection,
-            query,
             query_embedding,
             top_k,
             upload_count
         )
 
-    # Once the embedding is ready, the two independent collection
-    # searches can run at the same time.
+    combined = []
+
     if (
         RAG_PARALLEL_SEARCH
         and main_count > 0
@@ -382,7 +429,6 @@ def search_documents(
                 main_future = executor.submit(
                     search_main
                 )
-
                 upload_future = executor.submit(
                     search_uploads
                 )
@@ -390,14 +436,11 @@ def search_documents(
                 combined.extend(
                     main_future.result()
                 )
-
                 combined.extend(
                     upload_future.result()
                 )
 
         except Exception as error:
-            # Very conservative fallback for any local Chroma build
-            # that does not like concurrent collection reads.
             print(
                 "Parallel Chroma search failed; "
                 f"retrying sequentially: {error}",
@@ -493,7 +536,9 @@ def search_documents(
         else:
             item["relevance_score"] = None
 
-        deduplicated.append(item)
+        deduplicated.append(
+            item
+        )
 
         if (
             len(deduplicated)
@@ -502,7 +547,8 @@ def search_documents(
             break
 
     total_elapsed = round(
-        time.perf_counter() - total_started,
+        time.perf_counter()
+        - total_started,
         3
     )
 
@@ -520,8 +566,6 @@ def search_documents(
 # =========================================================
 
 def get_collection_counts():
-    # Always reacquire collection objects.
-    # This avoids stale UUID errors after a rebuild.
     main_collection = get_main_collection()
     upload_collection = get_upload_collection()
 
