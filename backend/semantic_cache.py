@@ -357,10 +357,9 @@ def save_cache_entry(
         question
     )
 
-    language = (
+    language = _cache_language(
         language
-        or "English"
-    ).strip()
+    )
 
     now = time.time()
 
