@@ -635,7 +635,7 @@ def generate_with_groq(
                     }
                 ],
                 max_completion_tokens=
-                    900
+                    1400
             )
         )
 
@@ -680,8 +680,8 @@ def generate_with_groq(
 def retrieve_search_results(
     question,
     query_embedding=None,
-    top_k=5,
-    final_results=3
+    top_k=6,
+    final_results=4
 ):
     """Retrieve a small, high-quality result set."""
 
@@ -802,15 +802,64 @@ Answer completely in {language}.
 
 STRICT RULES:
 1. Use only information from the retrieved documents.
+
 2. Do not add unsupported facts from your own knowledge.
-3. Give a complete but concise educational answer.
-4. Use headings and bullet points when useful.
-5. Use natural Unicode for English, Bengali and Hindi.
-6. Use Markdown formatting naturally.
-7. Do not invent laws, sections, dates, medical claims,
-   patent requirements or regulatory requirements.
-8. If the retrieved context is insufficient, clearly say so.
-9. Avoid unnecessary repetition.
+
+3. Give a detailed, comprehensive and educational answer.
+
+4. Prefer paragraph-based explanation over a list-only answer.
+
+5. When the retrieved information is sufficient, write approximately
+   4 to 7 meaningful paragraphs. Each paragraph should explain a
+   different aspect of the topic.
+
+6. Begin with a clear definition or introduction.
+
+7. Then explain the relevant aspects supported by the retrieved
+   documents, such as:
+   - purpose or objective
+   - background
+   - important features
+   - requirements or eligibility
+   - procedure or process
+   - scope
+   - rights or effects
+   - advantages
+   - limitations
+   - important provisions
+   Include only the aspects actually supported by the retrieved context.
+
+8. Use headings and subheadings to organize longer answers.
+
+9. Bullet points may be used for key points, features, requirements,
+   advantages or steps, but do not present the entire answer only as
+   bullet points when enough material exists for paragraph explanation.
+
+10. After an important bullet list, add a short explanatory paragraph
+    when the retrieved context supports it.
+
+11. For short definition questions, still give a useful explanation
+    rather than only one sentence.
+
+12. Do not artificially make an answer long by repeating the same
+    information. Prefer useful detail over repetition.
+
+13. Use natural Unicode for English, Bengali and Hindi.
+
+14. Use Markdown formatting naturally.
+
+15. Do not invent laws, sections, treaty dates, legal requirements,
+    medical claims, patent requirements or regulatory requirements.
+
+16. If the retrieved context is insufficient for a detailed answer,
+    clearly state that limitation instead of adding outside knowledge.
+
+17. Add the sentence
+    "*This explanation is for educational purposes and is not legal advice.*"
+    only when the question asks about a specific legal decision,
+    filing strategy, infringement, legal eligibility, legal risk,
+    or what the user should legally do. Do not automatically add it
+    to simple educational definition questions.
 
 USER QUESTION:
 {question}
@@ -1007,8 +1056,8 @@ def build_search_response(
         retrieve_search_results(
             question,
             query_embedding=query_embedding,
-            top_k=5,
-            final_results=3
+            top_k=6,
+            final_results=4
         )
     )
 

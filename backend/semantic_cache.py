@@ -45,6 +45,14 @@ SEMANTIC_SCAN_LIMIT = int(
     )
 )
 
+# Changing the prompt/output style should not reuse old cached answers.
+# Increase this value whenever the answer-generation prompt changes
+# substantially.
+CACHE_VERSION = os.getenv(
+    "RAG_CACHE_VERSION",
+    "v2-detailed"
+).strip()
+
 STORAGE_ROOT.mkdir(
     parents=True,
     exist_ok=True
@@ -116,6 +124,17 @@ def normalize_question(question):
     )
 
 
+def _cache_language(language):
+    language = _cache_language(
+        language
+    )
+
+    return (
+        f"{language}::"
+        f"{CACHE_VERSION}"
+    )
+
+
 def _is_fresh(created_at):
     if CACHE_TTL_SECONDS <= 0:
         return True
@@ -150,10 +169,9 @@ def get_exact_cache(question, language):
         question
     )
 
-    language = (
+    language = _cache_language(
         language
-        or "English"
-    ).strip()
+    )
 
     with _db_lock:
         with _connect() as connection:
@@ -238,10 +256,9 @@ def get_semantic_cache(
     if not query_embedding:
         return None
 
-    language = (
+    language = _cache_language(
         language
-        or "English"
-    ).strip()
+    )
 
     cutoff = (
         time.time()
