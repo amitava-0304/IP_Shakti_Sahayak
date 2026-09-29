@@ -125,9 +125,10 @@ def normalize_question(question):
 
 
 def _cache_language(language):
-    language = _cache_language(
+    language = (
         language
-    )
+        or "English"
+    ).strip()
 
     return (
         f"{language}::"
