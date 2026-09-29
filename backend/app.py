@@ -426,7 +426,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
 
-    title="AyurSetu AI API",
+    title="IP-SHAKTI Sahayak API",
 
     description=(
 
@@ -500,59 +500,6 @@ def normalize_language(language):
     return language_map.get(value, "English")
 
 
-def get_language_instruction(language):
-    language = normalize_language(language)
-
-    if language == "Bengali":
-        return (
-            "IMPORTANT: Write the complete final answer in Bengali using Bengali script. "
-            "Translate the retrieved source information into natural Bengali. "
-            "Do not write explanatory sentences in English. "
-            "English is allowed only for unavoidable proper names, acronyms, "
-            "official document titles, section numbers, or technical terms."
-        )
-
-    if language == "Hindi":
-        return (
-            "IMPORTANT: Write the complete final answer in Hindi using Devanagari script. "
-            "Translate the retrieved source information into natural Hindi. "
-            "Do not write explanatory sentences in English. "
-            "English is allowed only for unavoidable proper names, acronyms, "
-            "official document titles, section numbers, or technical terms."
-        )
-
-    return "Write the complete final answer in English."
-
-
-def answer_matches_language(answer, language):
-    if not answer:
-        return False
-
-    language = normalize_language(language)
-
-    if language == "Bengali":
-        bengali_chars = sum(
-            1 for ch in answer
-            if "\u0980" <= ch <= "\u09FF"
-        )
-        letters = sum(1 for ch in answer if ch.isalpha())
-        return bengali_chars >= 20 and (
-            letters == 0 or bengali_chars / letters >= 0.35
-        )
-
-    if language == "Hindi":
-        devanagari_chars = sum(
-            1 for ch in answer
-            if "\u0900" <= ch <= "\u097F"
-        )
-        letters = sum(1 for ch in answer if ch.isalpha())
-        return devanagari_chars >= 20 and (
-            letters == 0 or devanagari_chars / letters >= 0.35
-        )
-
-    return True
-
-
 
 
 
@@ -578,7 +525,7 @@ def frontend_home():
 
         "message":
 
-            "AyurSetu AI "
+            "IP-SHAKTI Sahayak "
 
             "API is running."
 
@@ -646,7 +593,7 @@ def api_status():
 
         "message":
 
-            "AyurSetu AI API is running",
+            "IP-SHAKTI Sahayak API is running",
 
         "semantic_cache_entries":
 
@@ -1650,12 +1597,6 @@ def build_rag_prompt(
 
 
 
-    language = normalize_language(language)
-
-    language_instruction = get_language_instruction(
-        language
-    )
-
     prompt = f"""
 
 You are AyurSetu AI.
@@ -1678,11 +1619,12 @@ OUTPUT LANGUAGE:
 
 Selected language: {language}
 
-{language_instruction}
+If the selected language is Bengali, write the complete answer in Bengali script.
+If the selected language is Hindi, write the complete answer in Devanagari script.
+If the selected language is English, write the complete answer in English.
 
-The retrieved context may be in English or another language.
-Translate ONLY the retrieved information into the selected output
-language without changing its factual meaning.
+Translate the retrieved information into the selected answer language when needed.
+Do not add unsupported facts while translating.
 
 
 
@@ -1829,111 +1771,170 @@ RETRIEVED CONTEXT:
 
 
 def generate_rag_answer(
-    prompt,
-    language="English"
+
+    prompt
+
 ):
+
     started = time.perf_counter()
 
-    language = normalize_language(language)
 
-    gemini_result = generate_with_gemini(prompt)
 
-    if (
-        gemini_result.get("success")
-        and not answer_matches_language(
-            gemini_result.get("answer", ""),
-            language
-        )
-    ):
-        retry_prompt = (
-            prompt
-            + "\n\nFINAL LANGUAGE CHECK:\n"
-            + get_language_instruction(language)
-            + "\nRewrite the complete answer now in the selected language. "
-              "Do not add any new facts."
-        )
+    gemini_result = generate_with_gemini(
 
-        retry_result = generate_with_gemini(retry_prompt)
+        prompt
 
-        if (
-            retry_result.get("success")
-            and answer_matches_language(
-                retry_result.get("answer", ""),
-                language
-            )
-        ):
-            gemini_result = retry_result
+    )
+
+
 
     gemini_elapsed = round(
+
         time.perf_counter() - started,
+
         3
+
     )
+
+
 
     print(
-        f"Gemini response time: {gemini_elapsed} seconds",
+
+        f"Gemini response time: "
+
+        f"{gemini_elapsed} seconds",
+
         flush=True
+
     )
 
-    if (
-        gemini_result.get("success")
-        and answer_matches_language(
-            gemini_result.get("answer", ""),
-            language
-        )
+
+
+    if gemini_result.get(
+
+        "success"
+
     ):
+
         return (
+
             gemini_result,
+
             gemini_elapsed,
+
             None
+
         )
+
+
+
+    print(
+
+        "Gemini failed, using Groq fallback:",
+
+        gemini_result.get("error"),
+
+        flush=True
+
+    )
+
+
 
     groq_started = time.perf_counter()
 
-    groq_prompt = (
+
+
+    groq_result = generate_with_groq(
+
         prompt
-        + "\n\nFINAL LANGUAGE CHECK:\n"
-        + get_language_instruction(language)
+
     )
 
-    groq_result = generate_with_groq(groq_prompt)
+
 
     groq_elapsed = round(
-        time.perf_counter() - groq_started,
+
+        time.perf_counter()
+
+        - groq_started,
+
         3
+
     )
+
+
 
     print(
-        f"Groq response time: {groq_elapsed} seconds",
+
+        f"Groq response time: "
+
+        f"{groq_elapsed} seconds",
+
         flush=True
+
     )
 
-    if (
-        groq_result.get("success")
-        and answer_matches_language(
-            groq_result.get("answer", ""),
-            language
-        )
+
+
+    if groq_result.get(
+
+        "success"
+
     ):
+
         return (
+
             groq_result,
+
             groq_elapsed,
-            gemini_result.get("error")
+
+            gemini_result.get(
+
+                "error"
+
+            )
+
         )
+
+
 
     return (
+
         {
+
             "success": False,
+
             "provider": "None",
-            "error": (
-                "Both AI providers failed to generate "
-                f"a valid {language} answer."
+
+            "error": "Both AI providers failed.",
+
+            "gemini_error": gemini_result.get(
+
+                "error"
+
             ),
-            "gemini_error": gemini_result.get("error"),
-            "groq_error": groq_result.get("error")
+
+            "groq_error": groq_result.get(
+
+                "error"
+
+            )
+
         },
+
         groq_elapsed,
-        gemini_result.get("error")
+
+        gemini_result.get(
+
+            "error"
+
+        )
+
     )
+
+
+
+
 
 def _cached_response(
 
@@ -2420,6 +2421,11 @@ def search(
     )
 
 
+
+    print(
+        f"Selected API language: {language}",
+        flush=True
+    )
 
     return build_search_response(
 
