@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 
+import json
 import os
 import shutil
 import threading
@@ -8,7 +9,7 @@ import uuid
 
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from google import genai
@@ -603,7 +604,7 @@ def generate_with_groq(
                     }
                 ],
                 max_completion_tokens=
-                    1800
+                    900
             )
         )
 
@@ -645,74 +646,61 @@ def generate_with_groq(
         }
 
 
-@app.post("/api/search")
-def search(
-    request: ChatRequest
+def retrieve_search_results(
+    question,
+    top_k=5,
+    final_results=3
 ):
-    question = (
-        request.question
-        or ""
-    ).strip()
+    """
+    Retrieve a small, high-quality result set.
+    Keeping this small reduces vector-search work and
+    significantly reduces the prompt sent to Gemini/Groq.
+    """
+    started = time.perf_counter()
 
-    if not question:
-        return {
-            "error":
-                "Question cannot be empty."
-        }
+    results = search_documents(
+        question,
+        top_k=top_k,
+        final_results=final_results
+    )
 
-    try:
-        results = search_documents(
-            question,
-            top_k=8,
-            final_results=5
-        )
+    elapsed = round(
+        time.perf_counter() - started,
+        3
+    )
 
-    except Exception as error:
-        return {
-            "question":
-                question,
-            "language":
-                request.language,
-            "error":
-                f"Document search "
-                f"failed: {error}",
-            "sources":
-                []
-        }
+    print(
+        f"Document search time: "
+        f"{elapsed} seconds",
+        flush=True
+    )
 
-    if not results:
-        return {
-            "question":
-                question,
-            "language":
-                request.language,
-            "answer":
-                "No relevant information "
-                "was found in the "
-                "knowledge base.",
-            "provider":
-                "None",
-            "sources":
-                []
-        }
+    return results, elapsed
 
+
+def build_rag_prompt(
+    question,
+    language,
+    results
+):
     context_parts = []
     sources = []
 
     for result in results:
         metadata = (
-            result.get(
-                "metadata"
-            )
+            result.get("metadata")
             or {}
         )
 
         text = (
-            result.get(
-                "text"
-            )
+            result.get("text")
             or ""
         )
+
+        # Your current upload chunks are about 700 chars.
+        # This safety cap prevents unusually large permanent
+        # knowledge-base chunks from making the AI prompt huge.
+        prompt_text = text[:1200]
 
         source = metadata.get(
             "source",
@@ -739,49 +727,35 @@ def search(
             f"Category: {category}\n"
             f"Page: {page}\n"
             f"Chunk: {chunk}\n"
-            f"Content:\n{text}"
+            f"Content:\n{prompt_text}"
         )
 
+        # Keep the complete retrieved chunk for the UI source card.
         sources.append(
             {
-                "source":
-                    source,
-                "category":
-                    category,
-                "page":
-                    page,
-                "chunk":
-                    chunk,
-                "text":
-                    text,
-                "uploaded":
-                    bool(
-                        metadata.get(
-                            "uploaded",
-                            False
-                        )
-                    ),
-                "distance":
-                    result.get(
-                        "distance"
-                    ),
-                "relevance_score":
-                    result.get(
-                        "relevance_score"
+                "source": source,
+                "category": category,
+                "page": page,
+                "chunk": chunk,
+                "text": text,
+                "uploaded": bool(
+                    metadata.get(
+                        "uploaded",
+                        False
                     )
+                ),
+                "distance": result.get(
+                    "distance"
+                ),
+                "relevance_score": result.get(
+                    "relevance_score"
+                )
             }
         )
 
     context = (
         "\n\n---\n\n"
-        .join(
-            context_parts
-        )
-    )
-
-    language = (
-        request.language
-        or "English"
+        .join(context_parts)
     )
 
     prompt = f"""
@@ -799,13 +773,14 @@ Answer completely in {language}.
 STRICT RULES:
 1. Use only information from the retrieved documents.
 2. Do not add unsupported facts from your own knowledge.
-3. Give a complete educational answer.
+3. Give a complete but concise educational answer.
 4. Use headings and bullet points when useful.
 5. Use natural Unicode for English, Bengali and Hindi.
 6. Use Markdown formatting naturally.
 7. Do not invent laws, sections, dates, medical claims,
    patent requirements or regulatory requirements.
 8. If the retrieved context is insufficient, clearly say so.
+9. Avoid unnecessary repetition.
 
 USER QUESTION:
 {question}
@@ -814,68 +789,443 @@ RETRIEVED CONTEXT:
 {context}
 """
 
-    gemini_result = (
-        generate_with_gemini(
-            prompt
-        )
+    return prompt, sources
+
+
+def generate_rag_answer(
+    prompt
+):
+    started = time.perf_counter()
+
+    gemini_result = generate_with_gemini(
+        prompt
+    )
+
+    gemini_elapsed = round(
+        time.perf_counter() - started,
+        3
+    )
+
+    print(
+        f"Gemini response time: "
+        f"{gemini_elapsed} seconds",
+        flush=True
     )
 
     if gemini_result.get(
         "success"
     ):
-        final_result = (
-            gemini_result
+        return (
+            gemini_result,
+            gemini_elapsed,
+            None
         )
 
-    else:
-        groq_result = (
-            generate_with_groq(
-                prompt
+    print(
+        "Gemini failed, using Groq fallback:",
+        gemini_result.get("error"),
+        flush=True
+    )
+
+    groq_started = time.perf_counter()
+
+    groq_result = generate_with_groq(
+        prompt
+    )
+
+    groq_elapsed = round(
+        time.perf_counter()
+        - groq_started,
+        3
+    )
+
+    print(
+        f"Groq response time: "
+        f"{groq_elapsed} seconds",
+        flush=True
+    )
+
+    if groq_result.get(
+        "success"
+    ):
+        return (
+            groq_result,
+            groq_elapsed,
+            gemini_result.get(
+                "error"
             )
         )
 
-        if groq_result.get(
-            "success"
-        ):
-            final_result = (
-                groq_result
+    return (
+        {
+            "success": False,
+            "provider": "None",
+            "error": "Both AI providers failed.",
+            "gemini_error": gemini_result.get(
+                "error"
+            ),
+            "groq_error": groq_result.get(
+                "error"
             )
+        },
+        groq_elapsed,
+        gemini_result.get(
+            "error"
+        )
+    )
 
-        else:
-            return {
-                "question":
-                    question,
-                "language":
-                    language,
-                "error":
-                    "Both AI providers failed.",
-                "gemini_error":
-                    gemini_result.get(
-                        "error"
-                    ),
-                "groq_error":
-                    groq_result.get(
-                        "error"
-                    ),
-                "sources":
-                    sources
+
+def build_search_response(
+    question,
+    language
+):
+    results, search_seconds = (
+        retrieve_search_results(
+            question,
+            top_k=5,
+            final_results=3
+        )
+    )
+
+    if not results:
+        return {
+            "question": question,
+            "language": language,
+            "answer":
+                "No relevant information "
+                "was found in the "
+                "knowledge base.",
+            "provider": "None",
+            "sources": [],
+            "timing": {
+                "search_seconds":
+                    search_seconds,
+                "ai_seconds":
+                    0,
+                "total_seconds":
+                    search_seconds
             }
+        }
+
+    prompt, sources = build_rag_prompt(
+        question,
+        language,
+        results
+    )
+
+    final_result, ai_seconds, gemini_error = (
+        generate_rag_answer(
+            prompt
+        )
+    )
+
+    if not final_result.get(
+        "success"
+    ):
+        return {
+            "question": question,
+            "language": language,
+            "error":
+                "Both AI providers failed.",
+            "gemini_error":
+                final_result.get(
+                    "gemini_error"
+                )
+                or gemini_error,
+            "groq_error":
+                final_result.get(
+                    "groq_error"
+                ),
+            "sources": sources,
+            "timing": {
+                "search_seconds":
+                    search_seconds,
+                "ai_seconds":
+                    ai_seconds,
+                "total_seconds":
+                    round(
+                        search_seconds
+                        + ai_seconds,
+                        3
+                    )
+            }
+        }
 
     return {
-        "question":
-            question,
-        "language":
-            language,
-        "answer":
-            final_result.get(
-                "answer",
-                ""
-            ),
-        "provider":
-            final_result.get(
-                "provider",
-                "Unknown"
-            ),
-        "sources":
-            sources
+        "question": question,
+        "language": language,
+        "answer": final_result.get(
+            "answer",
+            ""
+        ),
+        "provider": final_result.get(
+            "provider",
+            "Unknown"
+        ),
+        "sources": sources,
+        "timing": {
+            "search_seconds":
+                search_seconds,
+            "ai_seconds":
+                ai_seconds,
+            "total_seconds":
+                round(
+                    search_seconds
+                    + ai_seconds,
+                    3
+                )
+        }
     }
+
+
+@app.post("/api/search")
+def search(
+    request: ChatRequest
+):
+    """
+    Existing non-streaming endpoint.
+    Kept for compatibility with any older frontend/client.
+    """
+    question = (
+        request.question
+        or ""
+    ).strip()
+
+    if not question:
+        return {
+            "error":
+                "Question cannot be empty."
+        }
+
+    language = (
+        request.language
+        or "English"
+    )
+
+    return build_search_response(
+        question,
+        language
+    )
+
+
+@app.post("/api/search-stream")
+def search_stream(
+    request: ChatRequest
+):
+    """
+    Sends small JSON-line progress events so the frontend can
+    show the actual stage:
+      1. searching
+      2. generating
+      3. final result
+    """
+
+    question = (
+        request.question
+        or ""
+    ).strip()
+
+    language = (
+        request.language
+        or "English"
+    )
+
+    def send_event(payload):
+        return (
+            json.dumps(
+                payload,
+                ensure_ascii=False
+            )
+            + "\n"
+        )
+
+    def event_generator():
+        if not question:
+            yield send_event(
+                {
+                    "type": "result",
+                    "data": {
+                        "error":
+                            "Question cannot be empty."
+                    }
+                }
+            )
+            return
+
+        try:
+            yield send_event(
+                {
+                    "type": "stage",
+                    "stage": "searching",
+                    "message":
+                        "Searching knowledge base..."
+                }
+            )
+
+            results, search_seconds = (
+                retrieve_search_results(
+                    question,
+                    top_k=5,
+                    final_results=3
+                )
+            )
+
+            if not results:
+                yield send_event(
+                    {
+                        "type": "result",
+                        "data": {
+                            "question":
+                                question,
+                            "language":
+                                language,
+                            "answer":
+                                "No relevant information "
+                                "was found in the "
+                                "knowledge base.",
+                            "provider":
+                                "None",
+                            "sources":
+                                [],
+                            "timing": {
+                                "search_seconds":
+                                    search_seconds,
+                                "ai_seconds":
+                                    0,
+                                "total_seconds":
+                                    search_seconds
+                            }
+                        }
+                    }
+                )
+                return
+
+            prompt, sources = (
+                build_rag_prompt(
+                    question,
+                    language,
+                    results
+                )
+            )
+
+            yield send_event(
+                {
+                    "type": "stage",
+                    "stage": "generating",
+                    "message":
+                        "Relevant sources found. "
+                        "Generating answer...",
+                    "search_seconds":
+                        search_seconds
+                }
+            )
+
+            final_result, ai_seconds, gemini_error = (
+                generate_rag_answer(
+                    prompt
+                )
+            )
+
+            if not final_result.get(
+                "success"
+            ):
+                payload = {
+                    "question":
+                        question,
+                    "language":
+                        language,
+                    "error":
+                        "Both AI providers failed.",
+                    "gemini_error":
+                        final_result.get(
+                            "gemini_error"
+                        )
+                        or gemini_error,
+                    "groq_error":
+                        final_result.get(
+                            "groq_error"
+                        ),
+                    "sources":
+                        sources,
+                    "timing": {
+                        "search_seconds":
+                            search_seconds,
+                        "ai_seconds":
+                            ai_seconds,
+                        "total_seconds":
+                            round(
+                                search_seconds
+                                + ai_seconds,
+                                3
+                            )
+                    }
+                }
+
+            else:
+                payload = {
+                    "question":
+                        question,
+                    "language":
+                        language,
+                    "answer":
+                        final_result.get(
+                            "answer",
+                            ""
+                        ),
+                    "provider":
+                        final_result.get(
+                            "provider",
+                            "Unknown"
+                        ),
+                    "sources":
+                        sources,
+                    "timing": {
+                        "search_seconds":
+                            search_seconds,
+                        "ai_seconds":
+                            ai_seconds,
+                        "total_seconds":
+                            round(
+                                search_seconds
+                                + ai_seconds,
+                                3
+                            )
+                    }
+                }
+
+            yield send_event(
+                {
+                    "type": "result",
+                    "data": payload
+                }
+            )
+
+        except Exception as error:
+            print(
+                "Streaming search error:",
+                repr(error),
+                flush=True
+            )
+
+            yield send_event(
+                {
+                    "type": "result",
+                    "data": {
+                        "error":
+                            f"Search failed: {error}"
+                    }
+                }
+            )
+
+    return StreamingResponse(
+        event_generator(),
+        media_type=
+            "application/x-ndjson",
+        headers={
+            "Cache-Control":
+                "no-cache",
+            "X-Accel-Buffering":
+                "no"
+        }
+    )
+
