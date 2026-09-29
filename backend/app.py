@@ -482,18 +482,15 @@ class CentreSearchRequest(BaseModel):
 
 
 def normalize_language(language):
-    """Return one canonical language name for frontend, cache and AI."""
     value = (language or "English").strip().lower()
 
     language_map = {
         "english": "English",
         "en": "English",
-
         "bengali": "Bengali",
         "bangla": "Bengali",
         "বাংলা": "Bengali",
         "bn": "Bengali",
-
         "hindi": "Hindi",
         "हिन्दी": "Hindi",
         "हिंदी": "Hindi",
@@ -504,33 +501,56 @@ def normalize_language(language):
 
 
 def get_language_instruction(language):
-    """Return a strict output-language instruction for the AI."""
-    instructions = {
-        "English": (
-            "Write the entire final answer in English."
-        ),
-        "Bengali": (
-            "Write the ENTIRE final answer in Bengali using Bengali script. "
-            "Translate retrieved English source information into natural Bengali "
-            "without changing its factual meaning. "
-            "Do not write explanatory sentences in English. "
-            "English may appear only for unavoidable proper names, official "
-            "titles, acronyms, section numbers, document names, or technical terms."
-        ),
-        "Hindi": (
-            "Write the ENTIRE final answer in Hindi using Devanagari script. "
-            "Translate retrieved English source information into natural Hindi "
-            "without changing its factual meaning. "
-            "Do not write explanatory sentences in English. "
-            "English may appear only for unavoidable proper names, official "
-            "titles, acronyms, section numbers, document names, or technical terms."
-        ),
-    }
+    language = normalize_language(language)
 
-    return instructions.get(
-        normalize_language(language),
-        instructions["English"]
-    )
+    if language == "Bengali":
+        return (
+            "IMPORTANT: Write the complete final answer in Bengali using Bengali script. "
+            "Translate the retrieved source information into natural Bengali. "
+            "Do not write explanatory sentences in English. "
+            "English is allowed only for unavoidable proper names, acronyms, "
+            "official document titles, section numbers, or technical terms."
+        )
+
+    if language == "Hindi":
+        return (
+            "IMPORTANT: Write the complete final answer in Hindi using Devanagari script. "
+            "Translate the retrieved source information into natural Hindi. "
+            "Do not write explanatory sentences in English. "
+            "English is allowed only for unavoidable proper names, acronyms, "
+            "official document titles, section numbers, or technical terms."
+        )
+
+    return "Write the complete final answer in English."
+
+
+def answer_matches_language(answer, language):
+    if not answer:
+        return False
+
+    language = normalize_language(language)
+
+    if language == "Bengali":
+        bengali_chars = sum(
+            1 for ch in answer
+            if "\u0980" <= ch <= "\u09FF"
+        )
+        letters = sum(1 for ch in answer if ch.isalpha())
+        return bengali_chars >= 20 and (
+            letters == 0 or bengali_chars / letters >= 0.35
+        )
+
+    if language == "Hindi":
+        devanagari_chars = sum(
+            1 for ch in answer
+            if "\u0900" <= ch <= "\u097F"
+        )
+        letters = sum(1 for ch in answer if ch.isalpha())
+        return devanagari_chars >= 20 and (
+            letters == 0 or devanagari_chars / letters >= 0.35
+        )
+
+    return True
 
 
 
@@ -1654,15 +1674,15 @@ information supplied below.
 
 
 
-LANGUAGE REQUIREMENT:
+OUTPUT LANGUAGE:
 
 Selected language: {language}
 
 {language_instruction}
 
-The retrieved context may be written in another language.
-Translate only the retrieved information into the selected answer
-language. Do not add facts that are not present in the retrieved context.
+The retrieved context may be in English or another language.
+Translate ONLY the retrieved information into the selected output
+language without changing its factual meaning.
 
 
 
@@ -1809,170 +1829,111 @@ RETRIEVED CONTEXT:
 
 
 def generate_rag_answer(
-
-    prompt
-
+    prompt,
+    language="English"
 ):
-
     started = time.perf_counter()
 
+    language = normalize_language(language)
 
+    gemini_result = generate_with_gemini(prompt)
 
-    gemini_result = generate_with_gemini(
-
-        prompt
-
-    )
-
-
-
-    gemini_elapsed = round(
-
-        time.perf_counter() - started,
-
-        3
-
-    )
-
-
-
-    print(
-
-        f"Gemini response time: "
-
-        f"{gemini_elapsed} seconds",
-
-        flush=True
-
-    )
-
-
-
-    if gemini_result.get(
-
-        "success"
-
+    if (
+        gemini_result.get("success")
+        and not answer_matches_language(
+            gemini_result.get("answer", ""),
+            language
+        )
     ):
-
-        return (
-
-            gemini_result,
-
-            gemini_elapsed,
-
-            None
-
+        retry_prompt = (
+            prompt
+            + "\n\nFINAL LANGUAGE CHECK:\n"
+            + get_language_instruction(language)
+            + "\nRewrite the complete answer now in the selected language. "
+              "Do not add any new facts."
         )
 
+        retry_result = generate_with_gemini(retry_prompt)
 
+        if (
+            retry_result.get("success")
+            and answer_matches_language(
+                retry_result.get("answer", ""),
+                language
+            )
+        ):
+            gemini_result = retry_result
 
-    print(
-
-        "Gemini failed, using Groq fallback:",
-
-        gemini_result.get("error"),
-
-        flush=True
-
+    gemini_elapsed = round(
+        time.perf_counter() - started,
+        3
     )
 
+    print(
+        f"Gemini response time: {gemini_elapsed} seconds",
+        flush=True
+    )
 
+    if (
+        gemini_result.get("success")
+        and answer_matches_language(
+            gemini_result.get("answer", ""),
+            language
+        )
+    ):
+        return (
+            gemini_result,
+            gemini_elapsed,
+            None
+        )
 
     groq_started = time.perf_counter()
 
-
-
-    groq_result = generate_with_groq(
-
+    groq_prompt = (
         prompt
-
+        + "\n\nFINAL LANGUAGE CHECK:\n"
+        + get_language_instruction(language)
     )
 
-
+    groq_result = generate_with_groq(groq_prompt)
 
     groq_elapsed = round(
-
-        time.perf_counter()
-
-        - groq_started,
-
+        time.perf_counter() - groq_started,
         3
-
     )
-
-
 
     print(
-
-        f"Groq response time: "
-
-        f"{groq_elapsed} seconds",
-
+        f"Groq response time: {groq_elapsed} seconds",
         flush=True
-
     )
 
-
-
-    if groq_result.get(
-
-        "success"
-
-    ):
-
-        return (
-
-            groq_result,
-
-            groq_elapsed,
-
-            gemini_result.get(
-
-                "error"
-
-            )
-
+    if (
+        groq_result.get("success")
+        and answer_matches_language(
+            groq_result.get("answer", ""),
+            language
         )
-
-
+    ):
+        return (
+            groq_result,
+            groq_elapsed,
+            gemini_result.get("error")
+        )
 
     return (
-
         {
-
             "success": False,
-
             "provider": "None",
-
-            "error": "Both AI providers failed.",
-
-            "gemini_error": gemini_result.get(
-
-                "error"
-
+            "error": (
+                "Both AI providers failed to generate "
+                f"a valid {language} answer."
             ),
-
-            "groq_error": groq_result.get(
-
-                "error"
-
-            )
-
+            "gemini_error": gemini_result.get("error"),
+            "groq_error": groq_result.get("error")
         },
-
         groq_elapsed,
-
-        gemini_result.get(
-
-            "error"
-
-        )
-
+        gemini_result.get("error")
     )
-
-
-
-
 
 def _cached_response(
 
