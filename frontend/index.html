@@ -1285,16 +1285,20 @@
                 >
 
                 <button
+                    type="button"
+                    id="askQuestionBtn"
                     class="ask-btn"
-                    onclick="askQuestion()">
+                    onclick="askQuestion(); return false;">
                     Ask ➜
                 </button>
 
             </div>
 
             <button
+                type="button"
+                id="clearQuestionBtn"
                 class="clear-btn"
-                onclick="clearQuestion()">
+                onclick="clearQuestion(); return false;">
                 Clear Question
             </button>
 
@@ -1580,37 +1584,82 @@
 
     function clearQuestion() {
 
-        document.getElementById(
-            "questionInput"
-        ).value = "";
+        const questionInput =
+            document.getElementById(
+                "questionInput"
+            );
 
-        document.getElementById(
-            "questionStatus"
-        ).textContent = "";
+        const questionStatus =
+            document.getElementById(
+                "questionStatus"
+            );
 
-        document.getElementById(
-            "responseArea"
-        ).innerHTML = "";
+        const responseArea =
+            document.getElementById(
+                "responseArea"
+            );
 
-        document.getElementById(
-            "sourcesArea"
-        ).innerHTML = "";
+        const sourcesArea =
+            document.getElementById(
+                "sourcesArea"
+            );
 
-        document.getElementById(
-            "sourcesSection"
-        ).style.display = "none";
+        const sourcesSection =
+            document.getElementById(
+                "sourcesSection"
+            );
 
-        document.getElementById(
-            "responseCard"
-        ).style.display = "none";
+        const responseCard =
+            document.getElementById(
+                "responseCard"
+            );
 
-        document.getElementById(
-            "languageDisplay"
-        ).textContent = "";
+        const languageDisplay =
+            document.getElementById(
+                "languageDisplay"
+            );
 
-        document.getElementById(
-            "providerDisplay"
-        ).textContent = "";
+        const providerDisplay =
+            document.getElementById(
+                "providerDisplay"
+            );
+
+        if (questionInput) {
+            questionInput.value = "";
+            questionInput.focus();
+        }
+
+        if (questionStatus) {
+            questionStatus.textContent = "";
+        }
+
+        if (responseArea) {
+            responseArea.innerHTML = "";
+        }
+
+        if (sourcesArea) {
+            sourcesArea.innerHTML = "";
+        }
+
+        if (sourcesSection) {
+            sourcesSection.style.display =
+                "none";
+        }
+
+        if (responseCard) {
+            responseCard.style.display =
+                "none";
+        }
+
+        if (languageDisplay) {
+            languageDisplay.textContent =
+                "";
+        }
+
+        if (providerDisplay) {
+            providerDisplay.textContent =
+                "";
+        }
 
     }
 
@@ -3939,31 +3988,58 @@
 
 
     /* =====================================================
-       ENTER KEY - QUESTION
+       QUESTION BUTTON EVENTS
     ===================================================== */
 
-    document
-        .getElementById(
-            "questionInput"
-        )
-        .addEventListener(
+    /* =====================================================
+       QUESTION KEYBOARD EVENT
+    ===================================================== */
 
-            "keydown",
+    function bindQuestionEvents() {
 
-            function(event) {
+        const questionInput =
+            document.getElementById(
+                "questionInput"
+            );
 
-                if (
-                    event.key
-                    === "Enter"
-                ) {
+        if (questionInput) {
 
-                    askQuestion();
+            questionInput.addEventListener(
+                "keydown",
+                function(event) {
+
+                    if (
+                        event.key === "Enter"
+                    ) {
+                        event.preventDefault();
+                        askQuestion();
+                    }
 
                 }
+            );
 
-            }
+        }
 
+    }
+
+
+    if (
+        document.readyState
+        === "loading"
+    ) {
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            bindQuestionEvents
         );
+
+    }
+
+    else {
+
+        bindQuestionEvents();
+
+    }
 
 
     /* =====================================================
