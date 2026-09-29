@@ -43,7 +43,7 @@ The application supports **English, Bengali and Hindi** and combines:
 # 🌈 How AyurSetu AI Works
 
 <p align="center">
-  <img src="docs/ayursetu_ai_workflow.png"
+  <img src="docs/how_ip_shakti_sahayak_works.png"
        alt="AyurSetu AI Complete Workflow"
        width="100%">
 </p>
