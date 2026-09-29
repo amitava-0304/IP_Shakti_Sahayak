@@ -1670,15 +1670,15 @@
 
     async function askQuestion() {
 
-        const question =
+        const questionInput =
             document.getElementById(
                 "questionInput"
-            ).value.trim();
+            );
 
-        const language =
+        const languageSelect =
             document.getElementById(
                 "languageSelect"
-            ).value;
+            );
 
         const responseCard =
             document.getElementById(
@@ -1715,46 +1715,69 @@
                 "sourcesArea"
             );
 
-        if (!question) {
-            status.textContent =
-                "Please enter a question.";
+        if (!questionInput) {
+            alert("Question input was not found.");
             return;
         }
 
-        responseCard.style.display =
-            "block";
+        const question =
+            questionInput.value.trim();
 
-        responseArea.innerHTML = `
-            <p>
-                <span class="spinner"></span>
-                🔎 Searching knowledge base...
-            </p>
-        `;
+        const language =
+            languageSelect
+            ? languageSelect.value
+            : "English";
 
-        status.innerHTML =
-            '<span class="spinner"></span>'
-            + 'Searching knowledge base...';
+        if (!question) {
+            if (status) {
+                status.textContent =
+                    "Please enter a question.";
+            }
+            questionInput.focus();
+            return;
+        }
 
-        providerDisplay.textContent =
-            "";
+        if (responseCard) {
+            responseCard.style.display =
+                "block";
+        }
 
-        sourcesSection.style.display =
-            "none";
+        if (responseArea) {
+            responseArea.innerHTML = `
+                <p>
+                    <span class="spinner"></span>
+                    🔎 Searching the knowledge base and generating an answer...
+                </p>
+            `;
+        }
 
-        sourcesArea.innerHTML =
-            "";
+        if (status) {
+            status.innerHTML =
+                '<span class="spinner"></span>'
+                + 'Processing question...';
+        }
 
-        responseCard.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+        if (providerDisplay) {
+            providerDisplay.textContent =
+                "";
+        }
+
+        if (sourcesSection) {
+            sourcesSection.style.display =
+                "none";
+        }
+
+        if (sourcesArea) {
+            sourcesArea.innerHTML =
+                "";
+        }
 
         try {
 
             const response =
                 await fetch(
                     API_URL
-                    + "/api/search-stream",
+                    + "/api/search",
                     {
                         method: "POST",
 
@@ -1773,321 +1796,179 @@
                     }
                 );
 
+            const rawText =
+                await response.text();
+
+            let data;
+
+            try {
+                data =
+                    JSON.parse(
+                        rawText
+                    );
+            }
+
+            catch (
+                parseError
+            ) {
+                throw new Error(
+                    "Backend returned invalid JSON. "
+                    + rawText.slice(0, 200)
+                );
+            }
+
             if (!response.ok) {
                 throw new Error(
-                    "HTTP "
-                    + response.status
+                    data.error
+                    || (
+                        "HTTP "
+                        + response.status
+                    )
                 );
             }
-
-            if (!response.body) {
-                throw new Error(
-                    "Streaming response is "
-                    + "not available."
-                );
-            }
-
-            const reader =
-                response.body.getReader();
-
-            const decoder =
-                new TextDecoder(
-                    "utf-8"
-                );
-
-            let buffer = "";
-            let finalData = null;
-
-            while (true) {
-
-                const {
-                    value,
-                    done
-                } = await reader.read();
-
-                if (done) {
-                    break;
-                }
-
-                buffer +=
-                    decoder.decode(
-                        value,
-                        {
-                            stream: true
-                        }
-                    );
-
-                const lines =
-                    buffer.split("\n");
-
-                buffer =
-                    lines.pop() || "";
-
-                for (
-                    const line
-                    of lines
-                ) {
-
-                    const cleanLine =
-                        line.trim();
-
-                    if (!cleanLine) {
-                        continue;
-                    }
-
-                    let event;
-
-                    try {
-                        event =
-                            JSON.parse(
-                                cleanLine
-                            );
-                    }
-
-                    catch (
-                        parseError
-                    ) {
-                        console.error(
-                            "Invalid stream event:",
-                            cleanLine,
-                            parseError
-                        );
-                        continue;
-                    }
-
-                    if (
-                        event.type
-                        === "stage"
-                    ) {
-
-                        if (
-                            event.stage
-                            === "searching"
-                        ) {
-
-                            responseArea.innerHTML = `
-                                <p>
-                                    <span class="spinner"></span>
-                                    🔎 Searching knowledge base...
-                                </p>
-                            `;
-
-                            status.innerHTML =
-                                '<span class="spinner"></span>'
-                                + 'Searching knowledge base...';
-
-                        }
-
-                        else if (
-                            event.stage
-                            === "generating"
-                        ) {
-
-                            const searchTime =
-                                Number(
-                                    event.search_seconds
-                                    || 0
-                                ).toFixed(2);
-
-                            responseArea.innerHTML = `
-                                <p>
-                                    <span class="spinner"></span>
-                                    🤖 Relevant sources found.
-                                    Generating answer...
-                                </p>
-
-                                <p style="
-                                    font-size: 0.9rem;
-                                    opacity: 0.75;
-                                ">
-                                    Knowledge-base search:
-                                    ${escapeHtml(searchTime)}
-                                    seconds
-                                </p>
-                            `;
-
-                            status.innerHTML =
-                                '<span class="spinner"></span>'
-                                + 'Generating answer...';
-
-                        }
-
-                    }
-
-                    else if (
-                        event.type
-                        === "result"
-                    ) {
-
-                        finalData =
-                            event.data;
-
-                    }
-
-                }
-
-            }
-
-            // Handle a final line without a newline.
-            if (
-                buffer.trim()
-                && !finalData
-            ) {
-
-                try {
-                    const lastEvent =
-                        JSON.parse(
-                            buffer.trim()
-                        );
-
-                    if (
-                        lastEvent.type
-                        === "result"
-                    ) {
-                        finalData =
-                            lastEvent.data;
-                    }
-                }
-                catch (
-                    parseError
-                ) {
-                    console.error(
-                        parseError
-                    );
-                }
-
-            }
-
-            if (!finalData) {
-                throw new Error(
-                    "Search completed without "
-                    + "a final result."
-                );
-            }
-
-            const data =
-                finalData;
 
             if (data.error) {
 
-                responseArea.innerHTML = `
-                    <div class="error-box">
-                        ❌ ${escapeHtml(data.error)}
-                    </div>
-                `;
+                if (responseArea) {
+                    responseArea.innerHTML = `
+                        <div class="error-box">
+                            ❌ ${escapeHtml(
+                                data.error
+                            )}
+                        </div>
+                    `;
+                }
 
-                status.textContent =
-                    "Request failed.";
-
-                if (
-                    data.gemini_error
-                    ||
-                    data.groq_error
-                ) {
-                    console.log(
-                        "Gemini:",
-                        data.gemini_error
-                    );
-
-                    console.log(
-                        "Groq:",
-                        data.groq_error
-                    );
+                if (status) {
+                    status.textContent =
+                        "Request failed.";
                 }
 
                 return;
             }
 
-            if (data.answer) {
+            if (responseArea) {
 
-                const cleanAnswer =
-                    data.answer.replace(
-                        /\\\*/g,
-                        "*"
-                    );
+                if (data.answer) {
 
-                responseArea.innerHTML =
-                    marked.parse(
-                        cleanAnswer
-                    );
+                    const cleanAnswer =
+                        data.answer.replace(
+                            /\\\*/g,
+                            "*"
+                        );
+
+                    if (
+                        typeof marked
+                        !== "undefined"
+                        && marked.parse
+                    ) {
+                        responseArea.innerHTML =
+                            marked.parse(
+                                cleanAnswer
+                            );
+                    }
+
+                    else {
+                        responseArea.textContent =
+                            cleanAnswer;
+                    }
+
+                }
+
+                else {
+                    responseArea.innerHTML = `
+                        <div class="error-box">
+                            No answer was returned.
+                        </div>
+                    `;
+                }
 
             }
 
-            languageDisplay.textContent =
-                "🌐 Language: "
-                + (
-                    data.language
-                    ||
-                    language
-                );
-
-            if (data.provider) {
-
-                providerDisplay.textContent =
-                    "⚡ AI Provider: "
-                    + data.provider;
-
+            if (languageDisplay) {
+                languageDisplay.textContent =
+                    "🌐 Language: "
+                    + (
+                        data.language
+                        || language
+                    );
             }
 
-            else {
+            if (providerDisplay) {
                 providerDisplay.textContent =
-                    "";
+                    data.provider
+                    ? (
+                        "⚡ AI Provider: "
+                        + data.provider
+                    )
+                    : "";
             }
 
             displaySources(
                 data.sources
+                || []
             );
 
-            const timing =
-                data.timing
-                || {};
+            if (status) {
 
-            const searchSeconds =
-                Number(
-                    timing.search_seconds
-                    || 0
-                ).toFixed(2);
+                const timing =
+                    data.timing
+                    || {};
 
-            const aiSeconds =
-                Number(
-                    timing.ai_seconds
-                    || 0
-                ).toFixed(2);
-
-            const totalSeconds =
-                Number(
+                if (
                     timing.total_seconds
-                    || 0
-                ).toFixed(2);
+                    !== undefined
+                ) {
+                    status.textContent =
+                        "✓ Answer generated. "
+                        + "Search: "
+                        + Number(
+                            timing.search_seconds
+                            || 0
+                        ).toFixed(2)
+                        + "s | AI: "
+                        + Number(
+                            timing.ai_seconds
+                            || 0
+                        ).toFixed(2)
+                        + "s | Total: "
+                        + Number(
+                            timing.total_seconds
+                            || 0
+                        ).toFixed(2)
+                        + "s";
+                }
 
-            status.textContent =
-                "✓ Answer generated. "
-                + "Search: "
-                + searchSeconds
-                + "s | AI: "
-                + aiSeconds
-                + "s | Total: "
-                + totalSeconds
-                + "s";
+                else {
+                    status.textContent =
+                        "✓ Answer generated.";
+                }
+
+            }
 
         }
 
         catch (error) {
 
-            responseArea.innerHTML = `
-                <div class="error-box">
-                    ❌ Unable to complete search.
-                    ${escapeHtml(
-                        error.message
-                        || ""
-                    )}
-                </div>
-            `;
+            if (responseArea) {
+                responseArea.innerHTML = `
+                    <div class="error-box">
+                        ❌ Unable to complete search.
+                        ${escapeHtml(
+                            error.message
+                            || ""
+                        )}
+                    </div>
+                `;
+            }
 
-            status.textContent =
-                "Backend connection failed.";
+            if (status) {
+                status.textContent =
+                    "Backend connection failed.";
+            }
 
             console.error(
+                "Ask button error:",
                 error
             );
 
