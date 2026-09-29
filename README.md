@@ -1,147 +1,70 @@
 # IP-SHAKTI Sahayak
 
-A multilingual AI assistant for **Intellectual Property, Ayurveda, Traditional Knowledge, and related regulatory information**.
+**IP-SHAKTI Sahayak** is a multilingual RAG-based AI assistant for:
 
-The application uses a **text-first RAG architecture**:
+- Intellectual Property
+- Patents
+- Trademarks
+- Copyright
+- International IP systems
+- Traditional Knowledge
+- Ayurveda
+- User-uploaded documents
+- Ayurveda centre search
 
-- Permanent PDF knowledge documents are converted to `.txt` locally.
-- Only the generated text files are deployed.
-- ChromaDB stores document embeddings.
-- User-uploaded PDF/TXT/DOCX files are converted to text automatically and indexed into a separate ChromaDB collection.
-- Gemini is the primary AI provider.
-- Groq is used as a fallback provider.
-- SerpApi is used to search Ayurveda centres.
-- FastAPI serves both the API and the frontend.
-- Railway hosts the deployed application.
+The application supports **English, Bengali and Hindi** and combines:
+
+- FastAPI
+- Google Gemini
+- Groq fallback
+- ChromaDB
+- OCR with Tesseract
+- Persistent Railway storage
+- Resumable page-by-page document indexing
+- Persistent semantic query caching
+- Live indexing progress
+- Fast knowledge-base search
 
 ---
 
 # 1. Current Architecture
 
 ```text
-                         ┌──────────────────────────┐
-                         │        User Browser       │
-                         │   frontend/index.html     │
-                         └─────────────┬────────────┘
-                                       │
-                                       │ HTTPS
-                                       ▼
-                         ┌──────────────────────────┐
-                         │        FastAPI API        │
-                         │      backend/app.py       │
-                         └─────────────┬────────────┘
-                                       │
-                ┌──────────────────────┼──────────────────────┐
-                │                      │                      │
-                ▼                      ▼                      ▼
-       ┌────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-       │  RAG Search     │    │ Document Upload  │    │ Ayurveda Search │
-       │ backend/rag.py  │    │ upload_ingest.py │    │ map_service.py  │
-       └────────┬───────┘    └─────────┬────────┘    └────────┬────────┘
-                │                      │                      │
-                ▼                      ▼                      ▼
-       ┌────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-       │   ChromaDB      │    │ PDF/TXT/DOCX     │    │    SerpApi      │
-       │                 │    │ → extracted TXT  │    │ Google Maps API │
-       │ ip_sakti_main   │    │ → chunks         │    └─────────────────┘
-       │ ip_sakti_uploads│    │ → ChromaDB        │
-       └────────┬───────┘    └──────────────────┘
-                │
-                ▼
-       ┌───────────────────────────────┐
-       │      Retrieved Context         │
-       └──────────────┬────────────────┘
-                      │
-                      ▼
-       ┌───────────────────────────────┐
-       │ Gemini Primary / Groq Fallback│
-       └──────────────┬────────────────┘
-                      │
-                      ▼
-       ┌───────────────────────────────┐
-       │ Multilingual AI Answer         │
-       │ English / Bengali / Hindi      │
-       └───────────────────────────────┘
+                    ┌──────────────────────┐
+                    │      Frontend        │
+                    │   frontend/index.html│
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │      FastAPI API     │
+                    │    backend/app.py    │
+                    └──────────┬───────────┘
+                               │
+              ┌────────────────┼─────────────────┐
+              │                │                 │
+              ▼                ▼                 ▼
+      ┌──────────────┐  ┌──────────────┐  ┌───────────────┐
+      │    RAG       │  │ Upload Jobs  │  │ Ayurveda Map  │
+      │ backend/rag  │  │ SQLite Queue │  │ map_service.py│
+      └──────┬───────┘  └──────┬───────┘  └───────────────┘
+             │                  │
+             ▼                  ▼
+      ┌──────────────┐   ┌──────────────┐
+      │   ChromaDB   │   │ OCR Worker   │
+      │ 2 collections│  │ worker.py    │
+      └──────────────┘   └──────┬───────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │ Page-by-page OCR│
+                       │ Tesseract       │
+                       └─────────────────┘
 ```
 
 ---
 
-# 2. Permanent Knowledge-Base Flow
-
-The permanent knowledge base does **not** use PDFs directly on Railway.
-
-```text
-Original PDF
-    │
-    ▼
-local_pdfs/<category>/
-    │
-    │ python prepare_data.py
-    ▼
-data/<category>/<document>.txt
-    │
-    │ backend/ingest.py
-    ▼
-Text chunking
-    │
-    ▼
-ChromaDB
-    │
-    ▼
-ip_sakti_main
-```
-
-This design avoids Git LFS PDF pointer problems and makes deployment much more reliable.
-
----
-
-# 3. User Upload Flow
-
-Users can upload:
-
-- PDF
-- TXT
-- DOCX
-
-The backend automatically processes the uploaded document.
-
-```text
-User uploads PDF/TXT/DOCX
-        │
-        ▼
-FastAPI /api/upload
-        │
-        ▼
-uploaded_files/
-        │
-        ▼
-Text extraction
-        │
-        ▼
-uploaded_text/
-        │
-        ▼
-Chunking
-        │
-        ▼
-ChromaDB
-        │
-        ▼
-ip_sakti_uploads
-        │
-        ▼
-Immediately searchable by RAG
-```
-
-For PDFs, `pypdf` extracts text.
-
-For DOCX files, `python-docx` extracts paragraph text.
-
-Image-only scanned PDFs require OCR and are not handled by the standard text extraction pipeline.
-
----
-
-# 4. Project Structure
+# 2. Project Structure
 
 ```text
 IP_Shakti_Sahayak/
@@ -152,6 +75,9 @@ IP_Shakti_Sahayak/
 │   ├── rag.py
 │   ├── ingest.py
 │   ├── upload_ingest.py
+│   ├── worker.py
+│   ├── job_store.py
+│   ├── semantic_cache.py
 │   └── map_service.py
 │
 ├── frontend/
@@ -181,28 +107,26 @@ IP_Shakti_Sahayak/
 │
 ├── prepare_data.py
 ├── requirements.txt
-├── .env
-├── .env.example
-├── .gitignore
+├── Dockerfile
 ├── railway.toml
-├── Procfile
-├── .python-version
+├── .env
+├── .gitignore
 └── README.md
 ```
 
 ---
 
-# 5. ChromaDB Collections
+# 3. Main ChromaDB Collections
 
-The project uses two collections.
+The project uses two ChromaDB collections.
 
-## Main Knowledge Base
+## Permanent Knowledge Base
 
 ```text
 ip_sakti_main
 ```
 
-Contains permanent knowledge extracted from the `.txt` files inside:
+Contains knowledge from the permanent documents stored under:
 
 ```text
 data/
@@ -214,21 +138,654 @@ data/
 ip_sakti_uploads
 ```
 
-Contains chunks generated from files uploaded by users.
-
-This keeps permanent reference material separate from temporary/user-provided content.
+Contains chunks extracted from uploaded PDF, TXT and DOCX files.
 
 ---
 
-# 6. Requirements
+# 4. Permanent Knowledge Base Flow
 
-Recommended Python version:
+Permanent PDFs should **not** be pushed directly to Railway.
+
+Recommended flow:
 
 ```text
-Python 3.12
+Original PDF
+    │
+    ▼
+local_pdfs/<category>/
+    │
+    │ python prepare_data.py
+    ▼
+data/<category>/<document>.txt
+    │
+    │ python backend/ingest.py
+    ▼
+Text chunking
+    │
+    ▼
+ChromaDB
+    │
+    ▼
+ip_sakti_main
 ```
 
-Main packages:
+This avoids:
+
+- Git LFS pointer issues
+- broken PDF parsing on Railway
+- unnecessary Railway storage usage
+- large Git repository size
+
+---
+
+# 5. User Upload Flow
+
+Supported formats:
+
+```text
+PDF
+TXT
+DOCX
+```
+
+Upload process:
+
+```text
+User uploads file
+    │
+    ▼
+POST /api/upload
+    │
+    ▼
+uploaded_files/
+    │
+    ▼
+Persistent job created
+    │
+    ▼
+SQLite job queue
+    │
+    ▼
+Background worker
+    │
+    ▼
+Text extraction / OCR
+    │
+    ▼
+uploaded_text/
+    │
+    ▼
+Chunking
+    │
+    ▼
+ip_sakti_uploads
+    │
+    ▼
+Searchable by RAG
+```
+
+---
+
+# 6. OCR Support
+
+The system supports image-only scanned PDFs using:
+
+```text
+PyMuPDF
+Pillow
+pytesseract
+Tesseract OCR
+```
+
+The OCR pipeline first attempts normal PDF text extraction.
+
+If a page contains less than:
+
+```text
+OCR_MIN_PAGE_TEXT
+```
+
+characters, OCR is used automatically.
+
+---
+
+# 7. Low-Memory OCR Design
+
+Large PDFs are processed **one page at a time**.
+
+```text
+Page 1
+→ extract text
+→ OCR if needed
+→ save extracted text
+→ chunk
+→ add to ChromaDB
+→ release memory
+
+Page 2
+→ same process
+
+Page 3
+→ same process
+```
+
+The complete PDF text is **not stored in RAM**.
+
+This allows much larger scanned PDFs to be processed without memory increasing proportionally with page count.
+
+---
+
+# 8. Tested OCR Results
+
+Current OCR configuration has successfully processed:
+
+| Pages | Chunks | Indexing Time |
+|---:|---:|---:|
+| 20 | 60 | 94 seconds |
+| 75 | 150 | 256 seconds |
+| 100 | 200 | 348 seconds |
+| 200 | 410 | 1067 seconds |
+
+The 200-page image-only PDF completed successfully and became searchable.
+
+---
+
+# 9. Persistent Upload Jobs
+
+Upload job state is stored in:
+
+```text
+/app/storage/upload_jobs.sqlite3
+```
+
+The job database stores:
+
+```text
+job_id
+filename
+status
+stage
+current_page
+total_pages
+chunks
+searchable
+started_at
+updated_at
+finished_at
+error
+```
+
+Possible states include:
+
+```text
+queued
+starting
+processing
+ocr
+indexing
+completed
+failed
+```
+
+---
+
+# 10. Resume After Railway Restart
+
+The upload pipeline is resumable.
+
+Example:
+
+```text
+PDF pages: 1000
+Completed: 643
+Railway restarts
+```
+
+After restart:
+
+```text
+job is automatically requeued
+processing resumes from page 644
+```
+
+The system uses deterministic Chroma IDs and `upsert()` to reduce duplicate indexing.
+
+---
+
+# 11. Upload Progress API
+
+Endpoint:
+
+```text
+GET /api/upload-status/{job_id}
+```
+
+Example response:
+
+```json
+{
+  "status": "processing",
+  "stage": "ocr",
+  "current_page": 137,
+  "total_pages": 1000,
+  "progress_percent": 13.7,
+  "chunks": 284,
+  "searchable": false,
+  "elapsed_seconds": 462
+}
+```
+
+Frontend progress can display:
+
+```text
+OCR processing page 138 of 1000.
+
+Page 137 / 1000
+Progress: 13.7%
+Chunks indexed: 284
+Elapsed time: 462 seconds
+```
+
+---
+
+# 12. Search Architecture
+
+The RAG search pipeline is:
+
+```text
+Question
+    │
+    ▼
+Persistent semantic cache
+    │
+    ├── exact hit → return immediately
+    │
+    └── miss
+          │
+          ▼
+Create query embedding
+          │
+          ▼
+Semantic cache comparison
+          │
+          ├── high-confidence hit → return cached answer
+          │
+          └── miss
+                │
+                ▼
+Search ChromaDB
+                │
+                ▼
+Retrieve top chunks
+                │
+                ▼
+Gemini
+                │
+                └── fallback → Groq
+```
+
+---
+
+# 13. Search Performance Optimizations
+
+The search pipeline has been optimized to reduce response time.
+
+Current configuration:
+
+```text
+top_k=6
+final_results=4
+```
+
+The embedding model is:
+
+- loaded once
+- warmed during application startup
+- reused between questions
+- protected by an in-memory query embedding cache
+
+The same query embedding is reused for:
+
+```text
+ip_sakti_main
+ip_sakti_uploads
+```
+
+The two collections can be searched in parallel.
+
+---
+
+# 14. Search Performance Results
+
+Earlier result:
+
+```text
+Search: 5.85s
+AI:     1.88s
+Total:  7.73s
+```
+
+After embedding caching/warm-up:
+
+```text
+Search: 1.97s
+AI:     1.17s
+Total:  3.14s
+```
+
+This reduced total response time significantly.
+
+---
+
+# 15. Persistent Semantic Query Cache
+
+The application includes a persistent answer cache.
+
+Database:
+
+```text
+/app/storage/semantic_query_cache.sqlite3
+```
+
+## Exact Question
+
+```text
+Question
+→ exact cache hit
+→ no embedding
+→ no Chroma search
+→ no AI request
+→ return answer
+```
+
+## Similar Question
+
+```text
+Question
+→ embedding
+→ semantic comparison
+→ similarity >= threshold
+→ cached answer
+```
+
+## Cache Miss
+
+```text
+Question
+→ embedding
+→ Chroma search
+→ Gemini / Groq
+→ save answer to cache
+```
+
+---
+
+# 16. Semantic Cache Configuration
+
+Recommended Railway variables:
+
+```text
+RAG_CACHE_TTL_SECONDS=21600
+RAG_CACHE_MAX_ENTRIES=500
+RAG_SEMANTIC_CACHE_THRESHOLD=0.97
+RAG_SEMANTIC_CACHE_SCAN_LIMIT=250
+RAG_QUERY_CACHE_SIZE=100
+RAG_WARMUP_EMBEDDING=true
+RAG_PARALLEL_SEARCH=true
+RAG_CACHE_VERSION=v2-detailed
+```
+
+`21600` seconds = 6 hours.
+
+The high semantic threshold reduces the chance that a cached answer is reused for a meaningfully different question.
+
+---
+
+# 17. Cache Invalidation
+
+The semantic cache is automatically cleared when:
+
+- a successfully uploaded document finishes indexing
+- the permanent knowledge base is rebuilt
+- startup ingestion modifies the permanent knowledge base
+
+This prevents stale answers after knowledge changes.
+
+---
+
+# 18. Detailed Answer Style
+
+The answer-generation prompt is configured for educational explanations rather than only short bullet lists.
+
+When the retrieved context is sufficient, the assistant should produce approximately:
+
+```text
+4–7 meaningful paragraphs
+```
+
+Answers should generally include relevant sections such as:
+
+```text
+Definition
+Purpose
+Background
+Features
+Requirements
+Process
+Scope
+Rights / Effects
+Advantages
+Limitations
+Important provisions
+```
+
+Only information supported by retrieved documents should be used.
+
+Bullet points may be used when helpful, but the complete answer should not automatically become a list-only response.
+
+---
+
+# 19. Legal Disclaimer Behavior
+
+The assistant should **not automatically add a legal disclaimer to every definition**.
+
+For simple educational questions such as:
+
+```text
+What is a patent?
+What is a trademark?
+What is the Madrid System?
+```
+
+a disclaimer is optional.
+
+The prompt asks for:
+
+```text
+This explanation is for educational purposes and is not legal advice.
+```
+
+only when the user asks about:
+
+- a specific legal decision
+- filing strategy
+- infringement
+- legal eligibility
+- legal risk
+- what the user should legally do
+
+---
+
+# 20. AI Providers
+
+Primary:
+
+```text
+Google Gemini
+```
+
+Current model configuration:
+
+```text
+gemini-3.6-flash
+```
+
+Fallback:
+
+```text
+Groq
+```
+
+Current Groq model:
+
+```text
+openai/gpt-oss-120b
+```
+
+Groq answer limit:
+
+```text
+max_completion_tokens=1400
+```
+
+---
+
+# 21. Supported Languages
+
+The application supports:
+
+```text
+English
+Bengali
+Hindi
+```
+
+The RAG prompt instructs the AI to answer completely in the selected language.
+
+---
+
+# 22. OCR Languages
+
+For the lowest Railway memory usage:
+
+```text
+OCR_LANGUAGES=eng
+```
+
+For multilingual OCR:
+
+```text
+OCR_LANGUAGES=eng+ben+hin
+```
+
+Enable Bengali/Hindi OCR carefully because additional Tesseract language models increase memory usage.
+
+---
+
+# 23. Current Recommended Railway Variables
+
+```text
+STORAGE_ROOT=/app/storage
+
+AUTO_INGEST_ON_START=false
+REBUILD_MAIN_ON_START=false
+
+OCR_DPI=90
+OCR_MIN_PAGE_TEXT=20
+OCR_LANGUAGES=eng
+
+CHROMA_BATCH_SIZE=10
+UPLOAD_CHUNK_SIZE=700
+UPLOAD_CHUNK_OVERLAP=80
+
+WORKER_POLL_SECONDS=2
+
+RAG_WARMUP_EMBEDDING=true
+RAG_PARALLEL_SEARCH=true
+RAG_QUERY_CACHE_SIZE=100
+
+RAG_CACHE_TTL_SECONDS=21600
+RAG_CACHE_MAX_ENTRIES=500
+RAG_SEMANTIC_CACHE_THRESHOLD=0.97
+RAG_SEMANTIC_CACHE_SCAN_LIMIT=250
+RAG_CACHE_VERSION=v2-detailed
+```
+
+---
+
+# 24. Why AUTO_INGEST_ON_START Is Disabled
+
+The main knowledge base is already populated.
+
+Therefore:
+
+```text
+AUTO_INGEST_ON_START=false
+REBUILD_MAIN_ON_START=false
+```
+
+avoids:
+
+- unnecessary Chroma rebuilds
+- extra CPU usage
+- extra memory usage
+- slow Railway startup
+- collection replacement issues
+
+---
+
+# 25. Persistent Railway Volume
+
+Recommended mount:
+
+```text
+/app/storage
+```
+
+Stored there:
+
+```text
+/app/storage/chroma_db
+/app/storage/uploaded_files
+/app/storage/uploaded_text
+/app/storage/upload_jobs.sqlite3
+/app/storage/semantic_query_cache.sqlite3
+```
+
+---
+
+# 26. Dockerfile
+
+Recommended Dockerfile:
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        tesseract-ocr-ben \
+        tesseract-ocr-hin \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["sh", "-c", "uvicorn backend.app:app --host 0.0.0.0 --port ${PORT:-8000}"]
+```
+
+---
+
+# 27. requirements.txt
 
 ```text
 fastapi
@@ -242,36 +799,44 @@ python-multipart
 python-docx
 pydantic
 requests
+PyMuPDF
+pytesseract
+Pillow
 ```
 
-Install everything with:
-
-```powershell
-pip install -r requirements.txt
-```
+Redis is **not required** in the current architecture.
 
 ---
 
-# 7. Local Setup on Windows
+# 28. railway.toml
 
-Open PowerShell.
+```toml
+[build]
+builder = "DOCKERFILE"
 
-Move to the project folder:
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+```
+
+Do not configure a Railway Start Command that prevents `$PORT` from being expanded.
+
+---
+
+# 29. Local Windows Setup
+
+Open PowerShell:
 
 ```powershell
 cd D:\IP_Shakti_Sahayak
-```
 
-Create a virtual environment:
-
-```powershell
 py -m venv venv
-```
 
-Activate it:
-
-```powershell
 .\venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
 ```
 
 If PowerShell blocks activation:
@@ -280,146 +845,27 @@ If PowerShell blocks activation:
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
-Then activate again:
-
-```powershell
-.\venv\Scripts\Activate.ps1
-```
-
-Install dependencies:
-
-```powershell
-pip install -r requirements.txt
-```
+Then activate again.
 
 ---
 
-# 8. Environment Variables
+# 30. Permanent PDF Preparation
 
-Create:
-
-```text
-.env
-```
-
-Example:
-
-```env
-GEMINI_API_KEY=your_gemini_key
-GROQ_API_KEY=your_groq_key
-SERPAPI_API_KEY=your_serpapi_key
-
-STORAGE_ROOT=.
-
-AUTO_INGEST_ON_START=true
-REBUILD_MAIN_ON_START=false
-
-CHROMA_BATCH_SIZE=75
-```
-
-Do not commit `.env` to GitHub.
-
----
-
-# 9. Preparing Permanent PDF Documents
-
-Put original PDFs only inside:
-
-```text
-local_pdfs/
-```
-
-Example:
-
-```text
-local_pdfs/
-├── patents/
-│   ├── patents_act_1970_current.pdf
-│   ├── patent_office_manual.pdf
-│   └── wipo_patentscope_guide.pdf
-│
-├── trademarks/
-│   ├── trade_marks_act_1999.pdf
-│   ├── trade_marks_rules_2017.pdf
-│   └── wipo_madrid_system_guide.pdf
-│
-├── ayurveda/
-│   ├── evidence_base_of_ayurveda.pdf
-│   ├── evidence_based_ayurvedic_practice.pdf
-│   └── ayurveda_science_of_life.pdf
-│
-└── ...
-```
-
-Convert all PDFs to text:
+Convert permanent PDFs into text:
 
 ```powershell
 python prepare_data.py
 ```
 
-Generated files will appear inside:
-
-```text
-data/
-```
-
-Example:
-
-```text
-data/patents/patents_act_1970_current.txt
-data/ayurveda/evidence_base_of_ayurveda.txt
-```
-
-The converter preserves page markers:
-
-```text
-===== PAGE 1 =====
-...
-
-===== PAGE 2 =====
-...
-```
-
-This allows source page information to remain available after conversion.
-
----
-
-# 10. Build the Main ChromaDB Locally
-
-Run:
+Then index them:
 
 ```powershell
 python backend\ingest.py
 ```
 
-The current ingestion system uses batch indexing.
-
-Default:
-
-```text
-CHROMA_BATCH_SIZE=75
-```
-
-Typical output:
-
-```text
-Found 18 TXT files.
-[1/18] Indexing: ...
-Added 75 chunks ...
-Indexed: document.txt (...)
-```
-
-The main collection will be stored inside:
-
-```text
-chroma_db/
-```
-
 ---
 
-# 11. Run Locally
-
-Start FastAPI:
+# 31. Start Locally
 
 ```powershell
 uvicorn backend.app:app --reload
@@ -437,429 +883,193 @@ API documentation:
 http://127.0.0.1:8000/docs
 ```
 
-Health check:
+---
+
+# 32. Main API Endpoints
 
 ```text
-http://127.0.0.1:8000/health
-```
+GET  /
+GET  /health
+GET  /api/status
 
-Status:
+POST /api/search
 
-```text
-http://127.0.0.1:8000/api/status
+POST /api/upload
+GET  /api/upload-status/{job_id}
+
+POST /api/ayurveda-centres
 ```
 
 ---
 
-# 12. Current API Status Format
+# 33. Search Timing Output
+
+The backend logs search timing.
 
 Example:
 
-```json
-{
-  "message": "IP-SHAKTI Sahayak API is running",
-  "gemini_configured": true,
-  "groq_configured": true,
-  "serpapi_configured": true,
-  "main_chunks": 379,
-  "uploaded_chunks": 448
-}
+```text
+RAG query embedding time: 0.95 seconds
+Chroma collection query time: 0.005 seconds
+Chroma collection query time: 0.006 seconds
+RAG total retrieval time: 1.10 seconds
+Document search time: 1.10 seconds
+Gemini response time: 1.20 seconds
 ```
 
-Meaning:
+Frontend can display:
 
 ```text
-main_chunks      = Permanent knowledge-base chunks
-uploaded_chunks  = User-uploaded document chunks
+Answer generated.
+Search: 1.97s
+AI: 1.17s
+Total: 3.14s
 ```
 
 ---
 
-# 13. API Endpoints
+# 34. Cache Result Example
 
-## Health Check
+For a repeated question:
 
 ```text
-GET /health
+Provider: Cache
+Search: 0.00s
+AI: 0.00s
+Total: 0.00s
 ```
 
-Example:
+Backend may log:
 
-```json
-{
-  "status": "ok"
-}
+```text
+RAG cache hit: exact
+```
+
+For a very similar cached query:
+
+```text
+RAG cache hit: semantic
+similarity=0.98
 ```
 
 ---
 
-## Application Status
+# 35. Current Search Prompt Behavior
 
-```text
-GET /api/status
-```
+The system is instructed to:
 
-Returns:
-
-- AI-provider configuration status
-- SerpApi configuration status
-- permanent ChromaDB chunk count
-- uploaded-document chunk count
+1. answer only from retrieved documents
+2. avoid unsupported facts
+3. produce detailed educational explanations
+4. prefer paragraphs over list-only output
+5. use headings when useful
+6. include 4–7 meaningful paragraphs when enough context exists
+7. avoid repetition
+8. use selected language
+9. avoid inventing legal, regulatory or medical information
+10. explicitly say when the retrieved context is insufficient
 
 ---
 
-## Ask a Question
+# 36. Example Output Style
+
+For:
+
+```text
+What is a patent?
+```
+
+the intended style is approximately:
+
+```text
+## What Is a Patent?
+
+A patent is a legal right granted for an invention that
+satisfies the applicable legal requirements...
+
+## Territorial Nature
+
+Patent protection is territorial...
+
+## Application and Examination
+
+An applicant normally submits a patent application...
+
+## Patent Document and Claims
+
+The patent specification describes the invention...
+
+## Key Points
+
+- protection is territorial
+- application and examination are required
+- claims define the legal scope
+- protection lasts for a limited statutory period
+```
+
+---
+
+# 37. Important Semantic Cache Bug Fix
+
+The cache-version update previously contained an accidental recursive helper:
+
+```python
+def _cache_language(language):
+    language = _cache_language(language)
+```
+
+This caused:
+
+```text
+Internal Server Error
+RecursionError
+```
+
+The corrected function is:
+
+```python
+def _cache_language(language):
+    language = (
+        language
+        or "English"
+    ).strip()
+
+    return (
+        f"{language}::"
+        f"{CACHE_VERSION}"
+    )
+```
+
+Use the corrected `semantic_cache.py`.
+
+---
+
+# 38. Ask Button
+
+The stable frontend currently uses:
 
 ```text
 POST /api/search
 ```
 
-Example request:
+for question answering.
 
-```json
-{
-  "question": "What is a patent?",
-  "language": "English"
-}
-```
+The earlier `/api/search-stream` implementation caused frontend reliability problems with the Ask button.
 
-Supported answer languages currently include:
-
-```text
-English
-Bengali
-Hindi
-```
+The current stable version uses the standard non-streaming endpoint while still displaying timing information after the answer is generated.
 
 ---
 
-## Upload a Document
+# 39. .gitignore
+
+Recommended:
 
 ```text
-POST /api/upload
-```
-
-Supported:
-
-```text
-.pdf
-.txt
-.docx
-```
-
-Processing:
-
-```text
-Upload
-→ extract text
-→ save extracted text
-→ chunk
-→ ChromaDB
-→ searchable
-```
-
----
-
-## Search Ayurveda Centres
-
-```text
-POST /api/ayurveda-centres
-```
-
-Example:
-
-```json
-{
-  "location": "Kolkata",
-  "latitude": null,
-  "longitude": null
-}
-```
-
-This endpoint uses SerpApi.
-
----
-
-# 14. RAG Search Flow
-
-When the user asks a question:
-
-```text
-Question
-   │
-   ▼
-Search ip_sakti_main
-   │
-   ├──────────────┐
-   │              │
-   ▼              ▼
-Permanent KB   Uploaded KB
-                 ip_sakti_uploads
-   │              │
-   └──────┬───────┘
-          ▼
-Merge results
-          │
-          ▼
-Sort by Chroma distance
-          │
-          ▼
-Select best chunks
-          │
-          ▼
-Build RAG context
-          │
-          ▼
-Gemini
-          │
-          ├── if success → answer
-          │
-          └── if failure → Groq
-                              │
-                              ▼
-                           answer
-```
-
-The displayed relevance value is derived from Chroma distance:
-
-```text
-relevance = 1 / (1 + distance)
-```
-
-It is useful as a relative similarity indicator, but it is not a statistical probability.
-
----
-
-# 15. AI Provider Flow
-
-Primary:
-
-```text
-Gemini
-```
-
-Fallback:
-
-```text
-Groq
-```
-
-Flow:
-
-```text
-RAG context
-    │
-    ▼
-Gemini request
-    │
-    ├── success → response
-    │
-    └── failure
-           │
-           ▼
-         Groq
-           │
-           ▼
-        response
-```
-
-The API response includes:
-
-```json
-{
-  "provider": "Gemini"
-}
-```
-
-or:
-
-```json
-{
-  "provider": "Groq"
-}
-```
-
----
-
-# 16. Railway Deployment Architecture
-
-Production architecture:
-
-```text
-GitHub Repository
-        │
-        │ push
-        ▼
-Railway Deployment
-        │
-        ├── FastAPI
-        ├── frontend/index.html
-        ├── data/*.txt
-        │
-        └── Railway Volume
-              │
-              ├── chroma_db/
-              ├── uploaded_files/
-              └── uploaded_text/
-```
-
-Original permanent PDFs are **not** deployed.
-
-Only `.txt` versions are deployed.
-
----
-
-# 17. Railway Start Command
-
-The production start command is:
-
-```bash
-uvicorn backend.app:app --host 0.0.0.0 --port $PORT
-```
-
-`railway.toml` example:
-
-```toml
-[build]
-builder = "RAILPACK"
-
-[deploy]
-startCommand = "uvicorn backend.app:app --host 0.0.0.0 --port $PORT"
-healthcheckPath = "/health"
-healthcheckTimeout = 120
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
-```
-
----
-
-# 18. Railway Environment Variables
-
-Configure these in Railway:
-
-```text
-GEMINI_API_KEY=...
-GROQ_API_KEY=...
-SERPAPI_API_KEY=...
-
-STORAGE_ROOT=/app/storage
-
-AUTO_INGEST_ON_START=true
-REBUILD_MAIN_ON_START=false
-
-CHROMA_BATCH_SIZE=75
-```
-
-Do not store API keys in GitHub.
-
----
-
-# 19. Railway Persistent Volume
-
-Create a Railway volume mounted at:
-
-```text
-/app/storage
-```
-
-Runtime data will be stored in:
-
-```text
-/app/storage/chroma_db
-/app/storage/uploaded_files
-/app/storage/uploaded_text
-```
-
-This is important because deployed container filesystems may otherwise be replaced during redeployments.
-
----
-
-# 20. Background Indexing
-
-Permanent knowledge indexing runs in a background thread.
-
-This prevents Railway from waiting several minutes before FastAPI starts.
-
-Old behaviour:
-
-```text
-Start container
-→ index all documents
-→ wait several minutes
-→ FastAPI starts
-→ Railway may stop container
-```
-
-Current behaviour:
-
-```text
-Start container
-→ FastAPI starts immediately
-→ /health works
-→ Railway considers app healthy
-→ knowledge-base indexing continues in background
-```
-
----
-
-# 21. Important Railway Settings
-
-Keep:
-
-```text
-AUTO_INGEST_ON_START=true
-REBUILD_MAIN_ON_START=false
-```
-
-Do not leave this permanently enabled:
-
-```text
-REBUILD_MAIN_ON_START=true
-```
-
-because it deletes and rebuilds the permanent collection every deployment.
-
----
-
-# 22. When to Use REBUILD_MAIN_ON_START=true
-
-Use it temporarily when:
-
-- permanent TXT knowledge files were changed
-- documents were removed
-- chunking logic was significantly changed
-- you intentionally want a fresh main collection
-
-Procedure:
-
-```text
-1. Set REBUILD_MAIN_ON_START=true
-2. Redeploy
-3. Wait for indexing to finish
-4. Check /api/status
-5. Confirm main_chunks > 0
-6. Change REBUILD_MAIN_ON_START=false
-7. Redeploy
-```
-
----
-
-# 23. Git Configuration
-
-Recommended `.gitignore`:
-
-```gitignore
 .env
-
 venv/
 .venv/
-
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-.DS_Store
 
 local_pdfs/
 *.pdf
@@ -867,593 +1077,201 @@ local_pdfs/
 chroma_db/
 uploaded_files/
 uploaded_text/
+
+upload_jobs.sqlite3
+semantic_query_cache.sqlite3
 ```
 
-Important:
-
-```text
-local_pdfs/
-```
-
-must stay local.
-
-Original PDFs should not be committed.
+Do not commit API keys or persistent databases.
 
 ---
 
-# 24. Why PDFs Are Not Stored in GitHub
+# 40. Git Push
 
-Previously, large PDFs were tracked through Git LFS.
-
-Railway received Git LFS pointer files like:
-
-```text
-version https://git-lfs.github.com/spec/v1
-oid sha256:...
-size ...
-```
-
-Those are not real PDF bytes.
-
-`pypdf` then produced errors such as:
-
-```text
-invalid pdf header: b'versi'
-EOF marker not found
-Stream has ended unexpectedly
-```
-
-The permanent solution is:
-
-```text
-Original PDF
-→ local only
-→ convert to TXT
-→ commit TXT
-→ deploy TXT
-```
-
----
-
-# 25. Frontend API Configuration
-
-Because the frontend and FastAPI backend are deployed together on Railway:
-
-```javascript
-const API_URL = "";
-```
-
-This makes API calls same-origin.
-
-Examples:
-
-```javascript
-fetch(API_URL + "/api/search")
-fetch(API_URL + "/api/upload")
-fetch(API_URL + "/api/ayurveda-centres")
-```
-
-Do not use:
-
-```text
-http://127.0.0.1:8000
-```
-
-inside the deployed frontend.
-
----
-
-# 26. Upload Storage
-
-When a user uploads a document, the original file is stored under:
-
-```text
-STORAGE_ROOT/uploaded_files/
-```
-
-The extracted text is stored under:
-
-```text
-STORAGE_ROOT/uploaded_text/
-```
-
-On Railway:
-
-```text
-/app/storage/uploaded_files/
-/app/storage/uploaded_text/
-```
-
-The text chunks are stored in:
-
-```text
-ip_sakti_uploads
-```
-
----
-
-# 27. Deploy Updates
-
-After modifying the project:
+Typical workflow:
 
 ```powershell
+git status
+
 git add .
+
 git commit -m "Update IP-SHAKTI Sahayak"
-git push
-```
 
-Railway automatically redeploys from GitHub if automatic deployment is enabled.
-
----
-
-# 28. Recommended Deployment Workflow
-
-```text
-1. Update code locally
-2. Test locally
-3. Convert any new permanent PDFs to TXT
-4. Run local ingestion test
-5. Confirm /api/status
-6. Commit only code + TXT knowledge files
-7. Push to GitHub
-8. Railway redeploys
-9. Check /health
-10. Check /api/status
-11. Test search
-12. Test document upload
-13. Test Ayurveda centre search
+git push origin main
 ```
 
 ---
 
-# 29. Adding a New Permanent Knowledge Document
+# 41. Railway Deployment
 
-Example:
-
-```text
-new_patent_document.pdf
-```
-
-Place it in:
+Current Railway application:
 
 ```text
-local_pdfs/patents/
+https://web-production-596c7.up.railway.app
 ```
 
-Run:
-
-```powershell
-python prepare_data.py
-```
-
-Verify:
+Useful endpoints:
 
 ```text
-data/patents/new_patent_document.txt
+https://web-production-596c7.up.railway.app/health
+https://web-production-596c7.up.railway.app/api/status
+https://web-production-596c7.up.railway.app/docs
 ```
 
-Push:
+---
 
-```powershell
-git add data
-git commit -m "Add patent knowledge document"
-git push
-```
+# 42. Recommended Production Strategy
 
-For a complete rebuild:
+Current design is suitable for:
+
+- large scanned PDFs
+- one OCR/indexing worker
+- persistent upload jobs
+- persistent vector data
+- repeated knowledge-base questions
+- Railway memory constraints
+
+For much higher concurrent traffic, the future architecture can move to:
 
 ```text
-REBUILD_MAIN_ON_START=true
+FastAPI Web Service
+        │
+        ▼
+Redis / Queue
+        │
+        ▼
+Dedicated OCR Worker Service
+        │
+        ▼
+Object Storage
+        │
+        ▼
+Vector Database
 ```
 
-Redeploy once.
+Redis is **not required** for the current version.
 
-Then return:
+---
+
+# 43. Important Limitations
+
+No cloud service can guarantee unlimited PDF size.
+
+With page-by-page processing, the main limits become:
 
 ```text
+processing time
+persistent storage
+Railway CPU
+OCR quality
+corrupted PDF pages
+deployment resource limits
+```
+
+rather than RAM increasing with the number of pages.
+
+---
+
+# 44. Current Stable Configuration Summary
+
+```text
+Python: 3.12
+Backend: FastAPI
+Frontend: HTML/CSS/JavaScript
+Primary AI: Gemini
+Fallback AI: Groq
+Vector DB: ChromaDB
+OCR: Tesseract
+Upload queue: SQLite
+Semantic cache: SQLite
+Persistent storage: Railway volume
+Redis: Not required
+```
+
+Current tested capabilities:
+
+```text
+200-page scanned PDF OCR/indexing: successful
+Persistent indexing resume: enabled
+Query embedding warm-up: enabled
+Query cache: enabled
+Semantic answer cache: enabled
+Detailed paragraph answers: enabled
+Gemini/Groq fallback: enabled
+English/Bengali/Hindi answers: enabled
+```
+
+---
+
+# 45. Final Recommended Railway Variables
+
+Copy these into the Railway **Variables** section:
+
+```text
+STORAGE_ROOT=/app/storage
+
+AUTO_INGEST_ON_START=false
 REBUILD_MAIN_ON_START=false
+
+OCR_DPI=90
+OCR_MIN_PAGE_TEXT=20
+OCR_LANGUAGES=eng
+
+CHROMA_BATCH_SIZE=10
+UPLOAD_CHUNK_SIZE=700
+UPLOAD_CHUNK_OVERLAP=80
+WORKER_POLL_SECONDS=2
+
+RAG_WARMUP_EMBEDDING=true
+RAG_PARALLEL_SEARCH=true
+RAG_QUERY_CACHE_SIZE=100
+
+RAG_CACHE_TTL_SECONDS=21600
+RAG_CACHE_MAX_ENTRIES=500
+RAG_SEMANTIC_CACHE_THRESHOLD=0.97
+RAG_SEMANTIC_CACHE_SCAN_LIMIT=250
+RAG_CACHE_VERSION=v2-detailed
 ```
 
 ---
 
-# 30. Adding a New User Upload
+# 46. Final Syntax Check
 
-No code change is required.
-
-The user selects:
-
-```text
-PDF / TXT / DOCX
-```
-
-and clicks:
-
-```text
-Upload & Index
-```
-
-The document is automatically converted, indexed, and made searchable.
-
----
-
-# 31. Troubleshooting
-
-## No PDFs found under local_pdfs
-
-Check:
+Before pushing any backend update:
 
 ```powershell
-Get-ChildItem .\local_pdfs -Recurse -Filter *.pdf
+python -m py_compile backend\app.py
+python -m py_compile backend\rag.py
+python -m py_compile backend\worker.py
+python -m py_compile backend\job_store.py
+python -m py_compile backend\upload_ingest.py
+python -m py_compile backend\semantic_cache.py
+python -m py_compile backend\map_service.py
 ```
 
-Also ensure:
-
-```text
-prepare_data.py
-```
-
-and:
-
-```text
-local_pdfs/
-```
-
-are inside the same project root.
-
----
-
-## invalid pdf header: b'versi'
-
-The file is a Git LFS pointer, not a genuine PDF.
-
-Check:
+Then:
 
 ```powershell
-Get-Content "file.pdf" -TotalCount 1
-```
-
-A genuine PDF should begin with:
-
-```text
-%PDF-
-```
-
-A Git LFS pointer begins with:
-
-```text
-version https://git-lfs.github.com/spec/v1
-```
-
-Replace it with the real original PDF.
-
----
-
-## Railway: Application failed to respond
-
-Check Railway logs.
-
-Make sure indexing runs in the background and the health route can respond immediately.
-
-Verify:
-
-```text
-GET /health
-```
-
-returns:
-
-```json
-{
-  "status": "ok"
-}
+git diff --check
+git status
 ```
 
 ---
 
-## Upload failed
+# 47. Project Goal
 
-Check:
+The goal of IP-SHAKTI Sahayak is to provide a multilingual, source-grounded educational assistant that can:
 
-```text
-POST /api/upload
-```
-
-through:
-
-```text
-/docs
-```
-
-Also confirm:
-
-```text
-python-multipart
-pypdf
-python-docx
-chromadb
-```
-
-are installed.
+- explain Intellectual Property concepts
+- answer questions from uploaded documents
+- work with scanned PDFs
+- retrieve source-based information
+- support Traditional Knowledge and Ayurveda material
+- provide fast RAG responses
+- operate reliably on Railway with persistent storage
+- handle large documents using low-memory processing
 
 ---
 
-## Main chunks are 0
-
-Check:
-
-```text
-/api/status
-```
-
-If:
-
-```json
-"main_chunks": 0
-```
-
-verify that `.txt` files exist inside:
-
-```text
-data/
-```
-
-Then run locally:
-
-```powershell
-python backend\ingest.py
-```
-
-On Railway, temporarily set:
-
-```text
-REBUILD_MAIN_ON_START=true
-```
-
-Redeploy once.
-
----
-
-## Uploaded chunks do not increase
-
-Confirm:
-
-```text
-/api/upload
-```
-
-returns:
-
-```json
-{
-  "searchable": true,
-  "chunks_added": 10
-}
-```
-
-Then check:
-
-```text
-/api/status
-```
-
----
-
-# 32. Current Working Production State
-
-A healthy deployed application should show:
-
-```json
-{
-  "message": "IP-SHAKTI Sahayak API is running",
-  "gemini_configured": true,
-  "groq_configured": true,
-  "serpapi_configured": true,
-  "main_chunks": 379,
-  "uploaded_chunks": 448
-}
-```
-
-Chunk counts will change when knowledge files or user uploads change.
-
----
-
-# 33. Security Notes
-
-Never commit:
-
-```text
-.env
-API keys
-passwords
-private credentials
-```
-
-Store production secrets using Railway environment variables.
-
-For user uploads, consider adding:
-
-- file-size limits
-- file-name sanitization
-- MIME-type validation
-- upload quotas
-- automatic deletion policies
-
-for a production-grade system.
-
----
-
-# 34. RAG Behaviour
-
-The AI prompt instructs the model to answer only from retrieved documents.
-
-The system:
-
-```text
-User Question
-→ semantic search
-→ best Chroma chunks
-→ context creation
-→ Gemini
-→ Groq fallback
-→ response + retrieved sources
-```
-
-If the retrieved context is insufficient, the assistant should state that instead of inventing information.
-
----
-
-# 35. Multilingual Support
-
-The frontend allows:
-
-```text
-English
-Bengali
-Hindi
-```
-
-Retrieval still searches the Chroma knowledge base, while the answer-generation prompt instructs the AI to respond in the selected language.
-
----
-
-# 36. Ayurveda Centre Search
-
-The Ayurveda centre feature is independent from ChromaDB.
-
-```text
-User Location
-→ FastAPI
-→ SerpApi
-→ Google Maps results
-→ centre cards
-→ map display
-→ directions
-```
-
-Returned information can include:
-
-- centre name
-- address
-- rating
-- review count
-- phone
-- type
-- website
-- latitude
-- longitude
-- place ID
-- directions
-
----
-
-# 37. Production Summary
-
-Final production architecture:
-
-```text
-                    GitHub
-                      │
-             code + data/*.txt
-                      │
-                      ▼
-                   Railway
-                      │
-        ┌─────────────┴─────────────┐
-        │                           │
-        ▼                           ▼
-     FastAPI                    Frontend
-        │
-        ├───────────┬───────────┬──────────────┐
-        │           │           │              │
-        ▼           ▼           ▼              ▼
-     ChromaDB     Gemini       Groq          SerpApi
-        │
-   ┌────┴────┐
-   │         │
-   ▼         ▼
-Main KB   Upload KB
-379+      448+
-chunks    chunks
-```
-
-Local-only permanent source documents:
-
-```text
-local_pdfs/
-```
-
-Deployed permanent documents:
-
-```text
-data/*.txt
-```
-
-Persistent Railway runtime data:
-
-```text
-/app/storage/chroma_db
-/app/storage/uploaded_files
-/app/storage/uploaded_text
-```
-
----
-
-# 38. Useful Commands
-
-Activate environment:
-
-```powershell
-.\venv\Scripts\Activate.ps1
-```
-
-Convert permanent PDFs:
-
-```powershell
-python prepare_data.py
-```
-
-Rebuild local ChromaDB:
-
-```powershell
-python backend\ingest.py
-```
-
-Start local server:
-
-```powershell
-uvicorn backend.app:app --reload
-```
-
-Git push:
-
-```powershell
-git add .
-git commit -m "Update IP-SHAKTI Sahayak"
-git push
-```
-
----
-
-# 39. Project Purpose
-
-IP-SHAKTI Sahayak is intended as an educational and knowledge-assistance platform.
-
-It combines:
-
-- Intellectual Property information
-- Ayurveda knowledge
-- Traditional Knowledge
-- International IP resources
-- User-provided document search
-- Multilingual AI responses
-- Ayurveda centre discovery
-
-AI-generated responses should be treated as educational information. Legal or medical decisions should be verified with qualified professionals or official authorities.
-
----
-
-## IP-SHAKTI Sahayak
-
-**Multilingual AI Assistant for Intellectual Property & Ayurveda**
-
-FastAPI + ChromaDB + Gemini + Groq + SerpApi + Railway
+**IP-SHAKTI Sahayak**  
+Multilingual RAG Assistant for Intellectual Property, Traditional Knowledge and Ayurveda.
