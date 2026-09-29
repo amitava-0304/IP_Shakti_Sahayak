@@ -10,6 +10,7 @@ try:
         update_job
     )
     from .upload_ingest import ingest_uploaded_file
+    from .semantic_cache import clear_semantic_cache
 except ImportError:
     from job_store import (
         init_job_database,
@@ -18,6 +19,7 @@ except ImportError:
         update_job
     )
     from upload_ingest import ingest_uploaded_file
+    from semantic_cache import clear_semantic_cache
 
 
 WORKER_POLL_SECONDS = float(
@@ -46,6 +48,9 @@ def process_job(job):
         )
 
         if result.get("success"):
+            # Uploaded knowledge changed, so old cached answers may be stale.
+            clear_semantic_cache()
+
             update_job(
                 job_id,
                 status="completed",

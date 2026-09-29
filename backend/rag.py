@@ -353,7 +353,8 @@ def search_documents(
     query,
     top_k=5,
     final_results=3,
-    distance_margin=0.45
+    distance_margin=0.45,
+    query_embedding=None
 ):
     query = (
         query
@@ -392,12 +393,14 @@ def search_documents(
     ):
         return []
 
-    # Query is embedded exactly once.
-    query_embedding = (
-        create_query_embedding(
-            query
+    # The API can precompute this embedding for semantic-cache lookup.
+    # If it did not, create it here exactly once.
+    if query_embedding is None:
+        query_embedding = (
+            create_query_embedding(
+                query
+            )
         )
-    )
 
     def search_main():
         return _query_collection_object(

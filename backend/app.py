@@ -16,7 +16,11 @@ from google import genai
 from groq import Groq
 
 try:
-    from .rag import search_documents, get_collection_counts
+    from .rag import (
+        search_documents,
+        get_collection_counts,
+        create_query_embedding
+    )
     from .map_service import search_places
     from .ingest import ensure_main_database
     from .job_store import (
@@ -25,8 +29,19 @@ try:
         get_job
     )
     from .worker import document_worker_loop
+    from .semantic_cache import (
+        get_exact_cache,
+        get_semantic_cache,
+        save_cache_entry,
+        clear_semantic_cache,
+        get_cache_stats
+    )
 except ImportError:
-    from rag import search_documents, get_collection_counts
+    from rag import (
+        search_documents,
+        get_collection_counts,
+        create_query_embedding
+    )
     from map_service import search_places
     from ingest import ensure_main_database
     from job_store import (
@@ -35,6 +50,13 @@ except ImportError:
         get_job
     )
     from worker import document_worker_loop
+    from semantic_cache import (
+        get_exact_cache,
+        get_semantic_cache,
+        save_cache_entry,
+        clear_semantic_cache,
+        get_cache_stats
+    )
 
 
 BASE_DIR = os.path.dirname(
@@ -107,6 +129,9 @@ groq_client = (
 def start_knowledge_base_indexing():
     try:
         result = ensure_main_database()
+
+        # Permanent knowledge-base changes can make cached answers stale.
+        clear_semantic_cache()
 
         print(
             "Knowledge base startup:",
@@ -257,9 +282,15 @@ def api_status():
             "uploads": 0
         }
 
+    cache_stats = get_cache_stats()
+
     return {
         "message":
             "IP-SHAKTI Sahayak API is running",
+        "semantic_cache_entries":
+            cache_stats.get("entries", 0),
+        "semantic_cache_hits":
+            cache_stats.get("hits", 0),
         "gemini_configured":
             bool(GEMINI_API_KEY),
         "groq_configured":
@@ -648,20 +679,19 @@ def generate_with_groq(
 
 def retrieve_search_results(
     question,
+    query_embedding=None,
     top_k=5,
     final_results=3
 ):
-    """
-    Retrieve a small, high-quality result set.
-    Keeping this small reduces vector-search work and
-    significantly reduces the prompt sent to Gemini/Groq.
-    """
+    """Retrieve a small, high-quality result set."""
+
     started = time.perf_counter()
 
     results = search_documents(
         question,
         top_k=top_k,
-        final_results=final_results
+        final_results=final_results,
+        query_embedding=query_embedding
     )
 
     elapsed = round(
@@ -875,16 +905,117 @@ def generate_rag_answer(
     )
 
 
+def _cached_response(
+    cache_result,
+    question,
+    language,
+    started
+):
+    response = dict(
+        cache_result["response"]
+    )
+
+    # Preserve the new question text for semantically similar queries.
+    response["question"] = question
+    response["language"] = language
+    response["provider"] = "Cache"
+    response["cache_hit"] = True
+    response["cache_type"] = cache_result["type"]
+    response["cache_similarity"] = cache_result["similarity"]
+
+    total_seconds = round(
+        time.perf_counter() - started,
+        3
+    )
+
+    response["timing"] = {
+        "search_seconds": total_seconds,
+        "ai_seconds": 0,
+        "total_seconds": total_seconds
+    }
+
+    print(
+        f"RAG cache hit: "
+        f"{cache_result['type']} "
+        f"similarity={cache_result['similarity']} "
+        f"time={total_seconds}s",
+        flush=True
+    )
+
+    return response
+
+
 def build_search_response(
     question,
     language
 ):
-    results, search_seconds = (
+    request_started = time.perf_counter()
+
+    # -----------------------------------------------------
+    # 1. Persistent exact cache lookup
+    # -----------------------------------------------------
+    # This requires no embedding, no Chroma query and no AI request.
+    exact_cache = get_exact_cache(
+        question,
+        language
+    )
+
+    if exact_cache:
+        return _cached_response(
+            exact_cache,
+            question,
+            language,
+            request_started
+        )
+
+    # -----------------------------------------------------
+    # 2. Compute the query embedding once
+    # -----------------------------------------------------
+    embedding_started = time.perf_counter()
+
+    query_embedding = create_query_embedding(
+        question
+    )
+
+    embedding_seconds = round(
+        time.perf_counter()
+        - embedding_started,
+        3
+    )
+
+    # -----------------------------------------------------
+    # 3. Persistent semantic cache lookup
+    # -----------------------------------------------------
+    semantic_cache = get_semantic_cache(
+        question,
+        language,
+        query_embedding
+    )
+
+    if semantic_cache:
+        return _cached_response(
+            semantic_cache,
+            question,
+            language,
+            request_started
+        )
+
+    # -----------------------------------------------------
+    # 4. RAG search using the SAME query embedding
+    # -----------------------------------------------------
+    results, chroma_seconds = (
         retrieve_search_results(
             question,
+            query_embedding=query_embedding,
             top_k=5,
             final_results=3
         )
+    )
+
+    search_seconds = round(
+        embedding_seconds
+        + chroma_seconds,
+        3
     )
 
     if not results:
@@ -897,13 +1028,17 @@ def build_search_response(
                 "knowledge base.",
             "provider": "None",
             "sources": [],
+            "cache_hit": False,
             "timing": {
                 "search_seconds":
                     search_seconds,
-                "ai_seconds":
-                    0,
+                "ai_seconds": 0,
                 "total_seconds":
-                    search_seconds
+                    round(
+                        time.perf_counter()
+                        - request_started,
+                        3
+                    )
             }
         }
 
@@ -937,6 +1072,7 @@ def build_search_response(
                     "groq_error"
                 ),
             "sources": sources,
+            "cache_hit": False,
             "timing": {
                 "search_seconds":
                     search_seconds,
@@ -944,14 +1080,14 @@ def build_search_response(
                     ai_seconds,
                 "total_seconds":
                     round(
-                        search_seconds
-                        + ai_seconds,
+                        time.perf_counter()
+                        - request_started,
                         3
                     )
             }
         }
 
-    return {
+    response = {
         "question": question,
         "language": language,
         "answer": final_result.get(
@@ -963,6 +1099,7 @@ def build_search_response(
             "Unknown"
         ),
         "sources": sources,
+        "cache_hit": False,
         "timing": {
             "search_seconds":
                 search_seconds,
@@ -970,12 +1107,23 @@ def build_search_response(
                 ai_seconds,
             "total_seconds":
                 round(
-                    search_seconds
-                    + ai_seconds,
+                    time.perf_counter()
+                    - request_started,
                     3
                 )
         }
     }
+
+    # Persist successful result for exact and high-confidence
+    # semantic reuse after Railway restarts.
+    save_cache_entry(
+        question,
+        language,
+        query_embedding,
+        response
+    )
+
+    return response
 
 
 @app.post("/api/search")
