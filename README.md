@@ -27,6 +27,840 @@ The application supports **English, Bengali and Hindi** and combines:
 
 ---
 
+
+---
+
+# 🌈 How IP-SHAKTI Sahayak Works
+
+<p align="center">
+  <img src="docs/how_ip_shakti_sahayak_works.png"
+       alt="IP-SHAKTI Sahayak Complete Workflow"
+       width="100%">
+</p>
+
+> 🚀 **IP-SHAKTI Sahayak** combines document ingestion, OCR, RAG search, semantic caching, AI answer generation, Docker, CI/CD, and Railway deployment into one complete workflow.
+
+---
+
+## 👤 1. User Interaction
+
+Users interact with the application through the web interface.
+
+### 💬 Ask a Question
+
+A user enters a question related to:
+
+- 🧠 Intellectual Property
+- 📜 Patents
+- ™️ Trademarks
+- ©️ Copyright
+- 🌍 International IP systems
+- 🌿 Ayurveda
+- 📚 Traditional Knowledge
+- 📄 Uploaded documents
+
+The frontend sends the question to the **FastAPI backend**.
+
+### 📤 Upload a Document
+
+Users can upload:
+
+```text
+PDF
+TXT
+DOCX
+```
+
+Uploaded documents are stored and automatically sent to the indexing pipeline.
+
+---
+
+## 🖥️ 2. Frontend Layer
+
+The frontend is implemented using:
+
+```text
+HTML
+CSS
+JavaScript
+```
+
+Its responsibilities include:
+
+| Feature | Purpose |
+|---|---|
+| 💬 Question input | Sends questions to the backend |
+| 📤 File upload | Uploads PDF/TXT/DOCX documents |
+| 📊 Progress display | Shows OCR/indexing progress |
+| 🧾 Source display | Shows retrieved source documents |
+| ⚡ Timing display | Shows search and AI response times |
+| 🌐 Language selection | English / Bengali / Hindi |
+
+The frontend communicates with the backend through FastAPI endpoints.
+
+---
+
+## ⚙️ 3. FastAPI Backend
+
+The FastAPI backend acts as the central controller of the project.
+
+```text
+frontend
+   ↓
+FastAPI
+   ↓
+RAG / Upload Worker / Cache / AI / Search
+```
+
+It performs the following tasks:
+
+- ✅ receives user questions
+- ✅ accepts file uploads
+- ✅ creates persistent indexing jobs
+- ✅ searches the knowledge base
+- ✅ calls Gemini or Groq
+- ✅ returns answers and sources
+- ✅ reports upload/indexing status
+- ✅ handles Ayurveda centre search
+
+---
+
+# 🔎 4. Search and Answer Flow
+
+When the user asks a question, IP-SHAKTI follows this sequence:
+
+```text
+Question
+   ↓
+Exact Cache Check
+   ↓
+Semantic Cache Check
+   ↓
+Create Query Embedding
+   ↓
+Search ChromaDB
+   ↓
+Retrieve Best Chunks
+   ↓
+Build RAG Prompt
+   ↓
+Gemini
+   ↓
+Groq Fallback (if required)
+   ↓
+Detailed Multilingual Answer
+```
+
+---
+
+## ⚡ Step 1: Exact Cache Check
+
+The application first checks whether the exact same question has already been answered.
+
+```text
+Question
+   ↓
+Exact cache hit?
+   ├── YES → return answer immediately
+   └── NO  → continue
+```
+
+If an exact cache result exists:
+
+- no embedding is required
+- no ChromaDB search is required
+- no Gemini/Groq API call is required
+
+This provides the fastest possible response.
+
+---
+
+## 🧠 Step 2: Semantic Cache Check
+
+If no exact match exists, the application checks for a highly similar previous question.
+
+Example:
+
+```text
+What is a patent?
+```
+
+and:
+
+```text
+Explain the meaning of patent.
+```
+
+may have very similar embeddings.
+
+If similarity is above the configured threshold:
+
+```text
+RAG_SEMANTIC_CACHE_THRESHOLD=0.97
+```
+
+the previous answer may be reused.
+
+---
+
+## 🧩 Step 3: Query Embedding
+
+For a new question, an embedding vector is created.
+
+The embedding model is:
+
+- loaded once
+- warmed during startup
+- reused for later requests
+- cached for repeated questions
+
+This optimization reduced search time significantly.
+
+### 📊 Observed performance
+
+Before optimization:
+
+```text
+Search: 5.85s
+AI:     1.88s
+Total:  7.73s
+```
+
+After embedding warm-up and caching:
+
+```text
+Search: 1.97s
+AI:     1.17s
+Total:  3.14s
+```
+
+---
+
+## 🗃️ Step 4: Search ChromaDB
+
+The system searches two collections:
+
+### 🔵 Permanent Knowledge Base
+
+```text
+ip_sakti_main
+```
+
+Contains permanent reference material.
+
+### 🟣 User Upload Knowledge Base
+
+```text
+ip_sakti_uploads
+```
+
+Contains documents uploaded by users.
+
+Both collections can be searched in parallel.
+
+---
+
+## 📚 Step 5: Retrieve Best Chunks
+
+The system retrieves the most relevant document chunks.
+
+Current configuration:
+
+```text
+top_k=6
+final_results=4
+```
+
+These chunks are used to build the context for the AI.
+
+---
+
+## 🤖 Step 6: Generate the Answer
+
+Primary provider:
+
+```text
+Google Gemini
+```
+
+Fallback provider:
+
+```text
+Groq
+```
+
+Flow:
+
+```text
+Gemini available?
+   ├── YES → generate answer
+   └── NO  → Groq fallback
+```
+
+The result is returned as a detailed educational answer.
+
+---
+
+## 🌐 Step 7: Multilingual Output
+
+The assistant supports:
+
+- 🇬🇧 English
+- 🇮🇳 Bengali
+- 🇮🇳 Hindi
+
+The selected language is passed to the RAG prompt.
+
+---
+
+# 📚 5. Permanent Knowledge Base Flow
+
+Permanent source documents follow this pipeline:
+
+```text
+local_pdfs/
+    ↓
+prepare_data.py
+    ↓
+data/<category>/*.txt
+    ↓
+ingest.py
+    ↓
+Chunking
+    ↓
+ip_sakti_main
+```
+
+### 📁 Knowledge categories
+
+```text
+ayurveda
+copyright
+international
+patents
+regulations
+trademarks
+traditional_knowledge
+```
+
+This design avoids pushing large PDFs directly to Railway.
+
+---
+
+# 📤 6. Upload + OCR Indexing Flow
+
+Uploaded documents follow a separate pipeline.
+
+```text
+Upload File
+    ↓
+Save File
+    ↓
+Create Persistent Job
+    ↓
+SQLite Job Queue
+    ↓
+Background Worker
+    ↓
+Extract Text
+    ↓
+OCR if required
+    ↓
+Chunk Text
+    ↓
+Index in ChromaDB
+    ↓
+ip_sakti_uploads
+```
+
+---
+
+## 🧾 Normal PDF
+
+For normal PDFs:
+
+```text
+pypdf
+   ↓
+Text extraction
+```
+
+If enough text is found, OCR is skipped.
+
+---
+
+## 🔍 Scanned PDF
+
+For image-only PDFs:
+
+```text
+PDF Page
+   ↓
+PyMuPDF
+   ↓
+Image
+   ↓
+Tesseract OCR
+   ↓
+Extracted Text
+```
+
+OCR is used when page text is below:
+
+```text
+OCR_MIN_PAGE_TEXT=20
+```
+
+---
+
+# 🧠 7. Low-Memory Page-by-Page OCR
+
+Large PDFs are never loaded completely into memory.
+
+Instead:
+
+```text
+Page 1
+→ OCR
+→ save
+→ chunk
+→ index
+→ release RAM
+
+Page 2
+→ OCR
+→ save
+→ chunk
+→ index
+→ release RAM
+
+...
+
+Page N
+```
+
+This keeps memory usage relatively stable even for large PDFs.
+
+---
+
+## 🧪 OCR Stress-Test Results
+
+| 📄 Pages | 📚 Chunks | ⏱️ Time | ✅ Result |
+|---:|---:|---:|---|
+| 20 | 60 | 94 sec | Success |
+| 75 | 150 | 256 sec | Success |
+| 100 | 200 | 348 sec | Success |
+| 200 | 410 | 1067 sec | Success |
+
+✅ A **200-page image-only scanned PDF** has been successfully indexed and made searchable.
+
+---
+
+# 💾 8. Persistent Job Queue
+
+The upload job database is:
+
+```text
+/app/storage/upload_jobs.sqlite3
+```
+
+It stores:
+
+```text
+job_id
+filename
+status
+stage
+current_page
+total_pages
+chunks
+searchable
+started_at
+updated_at
+finished_at
+error
+```
+
+---
+
+## 🔄 Resume After Restart
+
+If Railway restarts during OCR:
+
+```text
+1000 pages
+643 completed
+Railway restarts
+```
+
+the job resumes from approximately:
+
+```text
+page 644
+```
+
+instead of starting from page 1.
+
+---
+
+# 🧠 9. Persistent Semantic Cache
+
+The answer cache is stored at:
+
+```text
+/app/storage/semantic_query_cache.sqlite3
+```
+
+### Cache workflow
+
+```text
+Exact match
+   ↓
+Return immediately
+
+No exact match
+   ↓
+Semantic comparison
+   ↓
+Similarity >= 0.97?
+   ├── YES → cached answer
+   └── NO  → RAG + AI
+```
+
+### Cache advantages
+
+- ⚡ faster repeated answers
+- 💰 fewer AI API calls
+- 🔎 fewer ChromaDB searches
+- ♻️ survives Railway restart
+- 🧹 automatically invalidated when knowledge changes
+
+---
+
+# 🌿 10. Ayurveda Centre Search
+
+The FastAPI backend also supports Ayurveda centre search.
+
+```text
+User location / query
+    ↓
+FastAPI
+    ↓
+Map / search service
+    ↓
+Ayurveda centre results
+```
+
+This feature is separate from the RAG document-answering pipeline.
+
+---
+
+# 🛡️ 11. Persistent Storage and Reliability
+
+Railway persistent storage contains:
+
+```text
+/app/storage/
+│
+├── chroma_db/
+├── uploaded_files/
+├── uploaded_text/
+├── upload_jobs.sqlite3
+└── semantic_query_cache.sqlite3
+```
+
+### Reliability features
+
+| Feature | Benefit |
+|---|---|
+| 💾 Railway Volume | Keeps data after restart |
+| 🔄 Persistent jobs | Resumes indexing |
+| 🧠 Semantic cache | Faster repeat questions |
+| 📄 Page OCR | Low memory usage |
+| 🗃️ ChromaDB | Persistent vector search |
+
+---
+
+# 🐳 12. Docker Flow
+
+The entire application is packaged using Docker.
+
+```text
+Source Code
+    ↓
+Dockerfile
+    ↓
+Docker Build
+    ↓
+Docker Image
+    ↓
+Railway
+    ↓
+Running FastAPI Application
+```
+
+Docker includes:
+
+- Python 3.12
+- FastAPI
+- ChromaDB
+- Tesseract OCR
+- English OCR language model
+- Bengali OCR language model
+- Hindi OCR language model
+- project dependencies
+
+### Dockerfile responsibilities
+
+```text
+Install system packages
+        ↓
+Install Python packages
+        ↓
+Copy project
+        ↓
+Start Uvicorn
+```
+
+---
+
+# 🔁 13. CI/CD Pipeline
+
+The project can use GitHub Actions for automated CI/CD.
+
+```text
+Developer
+   ↓
+Git Push
+   ↓
+GitHub Repository
+   ↓
+GitHub Actions
+   ↓
+Syntax / Test Checks
+   ↓
+Docker Build
+   ↓
+Railway Deployment
+```
+
+---
+
+## 👨‍💻 Developer Stage
+
+Developer works locally:
+
+```text
+Write code
+Test code
+Check syntax
+Commit changes
+Push to GitHub
+```
+
+Example:
+
+```powershell
+git add .
+git commit -m "Update IP-SHAKTI Sahayak"
+git push origin main
+```
+
+---
+
+## 🐙 GitHub Repository
+
+GitHub provides:
+
+- version control
+- project history
+- collaboration
+- source storage
+- CI/CD trigger
+
+A push to:
+
+```text
+main
+```
+
+can trigger the deployment workflow.
+
+---
+
+## ⚙️ GitHub Actions CI/CD
+
+Typical pipeline:
+
+```text
+Checkout code
+    ↓
+Setup Python
+    ↓
+Install dependencies
+    ↓
+Syntax checks
+    ↓
+Tests
+    ↓
+Docker build
+    ↓
+Deployment
+```
+
+Recommended checks:
+
+```powershell
+python -m py_compile backend\app.py
+python -m py_compile backend\rag.py
+python -m py_compile backend\worker.py
+python -m py_compile backend\job_store.py
+python -m py_compile backend\upload_ingest.py
+python -m py_compile backend\semantic_cache.py
+python -m py_compile backend\map_service.py
+```
+
+---
+
+# 🚂 14. Railway Deployment
+
+Railway receives the Dockerized project and runs:
+
+```text
+Docker Container
+    ↓
+Uvicorn
+    ↓
+FastAPI Backend
+```
+
+The application connects to the Railway persistent volume:
+
+```text
+FastAPI Container
+      ↕
+/app/storage
+```
+
+This keeps application data safe during redeployment or restart.
+
+---
+
+# 🔗 15. Complete DevOps Flow
+
+```text
+Developer
+   ↓
+Local Project
+   ↓
+Git Commit
+   ↓
+GitHub Repository
+   ↓
+GitHub Actions CI/CD
+   ↓
+Syntax Check / Tests
+   ↓
+Docker Build
+   ↓
+Docker Image
+   ↓
+Railway Deployment
+   ↓
+FastAPI Application
+   ↕
+Railway Persistent Volume
+```
+
+---
+
+# 🎯 16. Complete End-to-End Flow
+
+### 💬 Question Flow
+
+```text
+User
+ ↓
+Frontend
+ ↓
+FastAPI
+ ↓
+Cache
+ ↓
+Embedding
+ ↓
+ChromaDB
+ ↓
+Best document chunks
+ ↓
+Gemini / Groq
+ ↓
+Detailed multilingual answer
+ ↓
+User
+```
+
+### 📄 Document Upload Flow
+
+```text
+User
+ ↓
+Upload
+ ↓
+FastAPI
+ ↓
+SQLite Job
+ ↓
+Worker
+ ↓
+Text Extraction / OCR
+ ↓
+Chunking
+ ↓
+ChromaDB
+ ↓
+Searchable document
+```
+
+### 🚀 Deployment Flow
+
+```text
+Developer
+ ↓
+GitHub
+ ↓
+GitHub Actions
+ ↓
+Docker
+ ↓
+Railway
+ ↓
+IP-SHAKTI Sahayak
+```
+
+---
+
+# ✅ 17. Why This Architecture Works Well
+
+| Capability | Implementation |
+|---|---|
+| 📚 RAG | ChromaDB + Gemini/Groq |
+| 🔍 OCR | Tesseract + PyMuPDF |
+| 📄 Large PDFs | Page-by-page processing |
+| 🔄 Recovery | Persistent SQLite jobs |
+| ⚡ Fast search | Warmed embedding model |
+| 🧠 Repeat queries | Semantic cache |
+| 🐳 Packaging | Docker |
+| 🔁 Automation | GitHub Actions CI/CD |
+| 🚂 Hosting | Railway |
+| 💾 Persistence | Railway Volume |
+| 🌐 Languages | English / Bengali / Hindi |
+
+---
+
+> ⚡ **Final architecture:** Fast, source-grounded, multilingual, resumable, containerized, CI/CD-ready, and optimized for large scanned documents.
+
+
 # 1. Current Architecture
 
 ```text
