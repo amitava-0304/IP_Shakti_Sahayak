@@ -418,12 +418,13 @@
 
         .response-card {
             display: none;
-            margin-top: 24px;
-            padding: 28px;
+            width: min(100%, 1120px);
+            margin: 30px auto 0;
+            padding: 40px 46px;
             border: 1px solid var(--line);
-            border-radius: 24px;
+            border-radius: 26px;
             background: white;
-            box-shadow: 0 16px 38px rgba(15,23,42,.08);
+            box-shadow: 0 18px 46px rgba(15,23,42,.10);
         }
 
         .response-header {
@@ -438,13 +439,27 @@
         .response-header h3 {
             margin: 0;
             color: #312e81;
-            font-size: 1.3rem;
+            font-size: 1.45rem;
         }
 
         #responseArea {
+            width: 100%;
             color: #334155;
-            line-height: 1.88;
-            font-size: 1rem;
+            line-height: 1.95;
+            font-size: 1.04rem;
+        }
+
+        #responseArea p {
+            margin: 0 0 1.25em;
+            text-align: justify;
+            text-justify: inter-word;
+            hyphens: auto;
+        }
+
+        #responseArea ul,
+        #responseArea ol {
+            padding-left: 1.6rem;
+            margin: 0 0 1.25em;
         }
 
         #responseArea h1,
@@ -872,6 +887,11 @@
 
             .main { padding: 20px 16px; }
 
+            .response-card {
+                width: 100%;
+                padding: 26px 20px;
+            }
+
             .welcome { padding: 23px 20px; }
             .welcome::after { display: none; }
 
@@ -1207,6 +1227,8 @@
                 id="uploadStatus"
                 class="status">
             </div>
+
+        </div>
 
         <!-- =================================================
              AI RESPONSE
