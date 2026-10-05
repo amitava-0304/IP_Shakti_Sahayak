@@ -920,6 +920,42 @@
 
             .map-open-btn { width: 100%; }
         }
+    
+        /* =================================================
+           FIRST-TIME AGENTIC GUIDE
+        ================================================= */
+        .agent-guide {
+            margin: 28px 0;
+            padding: 26px;
+            border: 1px solid rgba(99,102,241,.16);
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(238,242,255,.96), rgba(240,253,250,.96));
+            box-shadow: 0 12px 30px rgba(15,23,42,.06);
+        }
+        .agent-guide-heading {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .agent-guide-heading h3 { margin:0; color:#312e81; font-size:1.35rem; }
+        .agent-guide-heading p { margin:7px 0 0; color:#64748b; line-height:1.6; }
+        .agent-badge { padding:7px 11px; border-radius:999px; color:#166534; background:#ecfdf5; font-size:.82rem; font-weight:800; }
+        .agent-topic-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+        .agent-topic-card { padding:16px; border:1px solid rgba(148,163,184,.20); border-radius:16px; background:rgba(255,255,255,.92); cursor:pointer; text-align:left; transition:.18s ease; }
+        .agent-topic-card:hover { transform:translateY(-3px); border-color:rgba(99,102,241,.32); box-shadow:0 12px 25px rgba(15,23,42,.08); }
+        .agent-topic-icon { display:block; margin-bottom:8px; font-size:1.45rem; }
+        .agent-topic-title { display:block; color:#1e293b; font-weight:800; }
+        .agent-help { margin-top:14px; color:#64748b; font-size:.9rem; }
+        .follow-up-section { display:none; margin-top:22px; padding-top:18px; border-top:1px solid #e5e7eb; }
+        .follow-up-section h4 { margin:0 0 12px; color:#334155; font-size:1rem; }
+        .follow-up-buttons { display:flex; flex-wrap:wrap; gap:9px; }
+        .follow-up-btn { padding:9px 13px; border:1px solid #dbe4ff; border-radius:999px; color:#4338ca; background:#f8faff; cursor:pointer; font-weight:700; }
+        .follow-up-btn:hover { color:white; background:linear-gradient(135deg,#6366f1,#8b5cf6); }
+        .agent-mode-display { display:inline-flex; margin-top:16px; margin-left:7px; padding:7px 11px; border-radius:999px; color:#3730a3; background:#eef2ff; font-weight:800; font-size:.86rem; }
+
     </style>
 
 
@@ -1071,6 +1107,38 @@
 
             </div>
 
+        </div>
+
+
+
+        <!-- =================================================
+             FIRST-TIME AGENTIC GUIDE
+        ================================================= -->
+        <div class="agent-guide" id="agentGuide">
+            <div class="agent-guide-heading">
+                <div>
+                    <h3>🧭 What would you like to explore?</h3>
+                    <p>
+                        New to AyurSetu AI? Choose a topic below or type your own question.
+                        The AI agent decides whether a simple search or a deeper multi-step
+                        document search is needed.
+                    </p>
+                </div>
+                <div class="agent-badge">🧠 Agentic RAG</div>
+            </div>
+            <div class="agent-topic-grid" id="agentTopicGrid">
+                <button class="agent-topic-card" onclick="startGuidedQuestion('What is a patent and why is it important?')"><span class="agent-topic-icon">📘</span><span class="agent-topic-title">Patents</span></button>
+                <button class="agent-topic-card" onclick="startGuidedQuestion('What is a trademark?')"><span class="agent-topic-icon">™️</span><span class="agent-topic-title">Trademarks</span></button>
+                <button class="agent-topic-card" onclick="startGuidedQuestion('What is copyright?')"><span class="agent-topic-icon">©️</span><span class="agent-topic-title">Copyright</span></button>
+                <button class="agent-topic-card" onclick="startGuidedQuestion('What is PATENTSCOPE and how is it useful?')"><span class="agent-topic-icon">🌍</span><span class="agent-topic-title">WIPO &amp; PATENTSCOPE</span></button>
+                <button class="agent-topic-card" onclick="startGuidedQuestion('What is Ayurveda?')"><span class="agent-topic-icon">🌿</span><span class="agent-topic-title">Ayurveda</span></button>
+                <button class="agent-topic-card" onclick="startGuidedQuestion('What is traditional knowledge?')"><span class="agent-topic-icon">📜</span><span class="agent-topic-title">Traditional Knowledge</span></button>
+                <button class="agent-topic-card" onclick="startGuidedQuestion('What information is available in my uploaded documents?')"><span class="agent-topic-icon">📄</span><span class="agent-topic-title">Uploaded Documents</span></button>
+            </div>
+            <div class="agent-help">
+                📍 Looking for an Ayurveda centre? Use the separate <strong>Find Ayurveda Centres</strong> section below.
+                Location search is not mixed into normal knowledge questions unless you explicitly request it.
+            </div>
         </div>
 
 
@@ -1257,6 +1325,19 @@
             <div
                 id="providerDisplay"
                 class="provider-display">
+            </div>
+
+            <div
+                id="agentModeDisplay"
+                class="agent-mode-display"
+                style="display:none;">
+            </div>
+
+            <div
+                id="followUpSection"
+                class="follow-up-section">
+                <h4>💡 You may also explore</h4>
+                <div id="followUpButtons" class="follow-up-buttons"></div>
             </div>
 
             <div class="ai-disclaimer">
@@ -1498,6 +1579,39 @@
     }
 
 
+
+    /* =====================================================
+       AGENTIC FIRST-TIME GUIDE
+    ===================================================== */
+    function startGuidedQuestion(question) {
+        const input = document.getElementById("questionInput");
+        if (!input) return;
+        input.value = question;
+        input.scrollIntoView({ behavior: "smooth", block: "center" });
+        input.focus();
+    }
+
+    function displayAgentSuggestions(questions) {
+        const section = document.getElementById("followUpSection");
+        const box = document.getElementById("followUpButtons");
+        if (!section || !box) return;
+        box.innerHTML = "";
+        if (!questions || questions.length === 0) {
+            section.style.display = "none";
+            return;
+        }
+        questions.forEach(function(question) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "follow-up-btn";
+            button.textContent = question;
+            button.onclick = function() { startGuidedQuestion(question); };
+            box.appendChild(button);
+        });
+        section.style.display = "block";
+    }
+
+
     /* =====================================================
        CLEAR QUESTION
     ===================================================== */
@@ -1580,6 +1694,18 @@
             providerDisplay.textContent =
                 "";
         }
+
+        const agentModeDisplay =
+            document.getElementById(
+                "agentModeDisplay"
+            );
+
+        if (agentModeDisplay) {
+            agentModeDisplay.textContent = "";
+            agentModeDisplay.style.display = "none";
+        }
+
+        displayAgentSuggestions([]);
 
     }
 
@@ -1674,7 +1800,7 @@
         if (status) {
             status.innerHTML =
                 '<span class="spinner"></span>'
-                + 'Processing question...';
+                + 'Agent is planning and searching the knowledge base...';
         }
 
         if (providerDisplay) {
@@ -1697,7 +1823,7 @@
             const response =
                 await fetch(
                     API_URL
-                    + "/api/search",
+                    + "/api/agent-search",
                     {
                         method: "POST",
 
@@ -1823,6 +1949,30 @@
                     )
                     : "";
             }
+
+            const agentModeDisplay =
+                document.getElementById(
+                    "agentModeDisplay"
+                );
+
+            if (
+                agentModeDisplay
+                && data.agentic
+            ) {
+                agentModeDisplay.style.display =
+                    "inline-flex";
+                agentModeDisplay.textContent =
+                    "🧠 Agent Mode: "
+                    + (
+                        data.agent_mode
+                        || "guided"
+                    );
+            }
+
+            displayAgentSuggestions(
+                data.suggested_questions
+                || []
+            );
 
             displaySources(
                 data.sources
