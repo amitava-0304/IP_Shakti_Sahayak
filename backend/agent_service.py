@@ -22,6 +22,18 @@ except ImportError:
     from map_service import search_places
 
 
+try:
+    from .semantic_cache import (
+        get_exact_cache,
+        save_cache_entry
+    )
+except ImportError:
+    from semantic_cache import (
+        get_exact_cache,
+        save_cache_entry
+    )
+
+
 BASE_DIR = os.path.dirname(
     os.path.dirname(
         os.path.abspath(__file__)
@@ -179,7 +191,10 @@ def _call_gemini(
             gemini_client.models
             .generate_content(
                 model=AGENT_GEMINI_MODEL,
-                contents=prompt
+                contents=prompt,
+                config={
+                    "temperature": 0
+                }
             )
         )
 
@@ -232,6 +247,7 @@ def _call_groq(
                         "content": prompt
                     }
                 ],
+                temperature=0,
                 max_completion_tokens=
                     AGENT_MAX_COMPLETION_TOKENS
             )
@@ -580,13 +596,134 @@ def create_plan(
     Dict[str, Any],
     str
 ]:
+    q = (
+        question
+        or ""
+    ).strip()
+
+    q_lower = q.lower()
+
+    # --------------------------------------------------------
+    # Explicit centre/location search only
+    # --------------------------------------------------------
+    centre_terms = [
+        "find ayurveda centre",
+        "find ayurveda center",
+        "ayurveda centres in",
+        "ayurveda centers in",
+        "ayurvedic centre in",
+        "ayurvedic center in",
+        "ayurveda near me",
+        "nearby ayurveda",
+        "ayurvedic clinic near",
+        "ayurveda clinic near"
+    ]
+
+    if any(
+        term in q_lower
+        for term in centre_terms
+    ):
+        return (
+            {
+                "intent":
+                    "centre_search",
+                "mode":
+                    "centre_search",
+                "subqueries": [],
+                "centre_query":
+                    q,
+                "reason":
+                    (
+                        "Explicit Ayurveda "
+                        "centre search."
+                    )
+            },
+            "Rule Router"
+        )
+
+    # --------------------------------------------------------
+    # Simple questions use deterministic single-query search
+    # --------------------------------------------------------
+    simple_patterns = [
+        "what is ",
+        "what are ",
+        "define ",
+        "meaning of ",
+        "difference between",
+        "differentiate between"
+    ]
+
+    complex_words = [
+        "features",
+        "benefits",
+        "advantages",
+        "importance",
+        "scope",
+        "purpose",
+        "objectives",
+        "procedure",
+        "requirements",
+        "explain in detail",
+        "limitations",
+        "applications"
+    ]
+
+    simple_question = any(
+        pattern in q_lower
+        for pattern in simple_patterns
+    )
+
+    complex_count = sum(
+        1
+        for word in complex_words
+        if word in q_lower
+    )
+
+    if (
+        simple_question
+        and complex_count <= 1
+    ):
+        if (
+            "difference between"
+            in q_lower
+            or
+            "differentiate between"
+            in q_lower
+        ):
+            mode = "compare"
+        else:
+            mode = "knowledge"
+
+        return (
+            {
+                "intent":
+                    "knowledge",
+                "mode":
+                    mode,
+                "subqueries": [
+                    q
+                ],
+                "centre_query":
+                    "",
+                "reason":
+                    (
+                        "Deterministic "
+                        "single-query retrieval."
+                    )
+            },
+            "Rule Router"
+        )
+
+    # --------------------------------------------------------
+    # Complex questions use the AI planner
+    # --------------------------------------------------------
     planner_prompt = f"""
 You are the planning agent for AyurSetu AI.
 
-Your job is ONLY to decide how to retrieve evidence.
+Your task is ONLY to decide how the indexed knowledge base
+should be searched.
 
-AyurSetu AI is primarily a knowledge/document assistant.
-It supports:
+AyurSetu AI supports:
 - patents
 - trademarks
 - copyright
@@ -599,27 +736,28 @@ It supports:
 - indexed PDF/TXT/DOCX documents
 - user-uploaded documents
 
-IMPORTANT:
-Do NOT choose location/centre search just because a question mentions
-Ayurveda. Choose centre_search ONLY when the user explicitly asks to
-find a centre, clinic, nearby place, address, location or directions.
+Create up to {AGENT_MAX_SUBQUERIES} focused retrieval queries.
 
-For broad or multi-part knowledge questions, create up to
-{AGENT_MAX_SUBQUERIES} focused retrieval queries.
-For simple questions, use one retrieval query.
+IMPORTANT:
+Do NOT choose location/centre search merely because a question
+mentions Ayurveda. Centre search is only for explicit location,
+centre, clinic, address, nearby-place or directions requests.
 
 Return ONLY valid JSON:
 
 {{
-  "intent": "knowledge" | "centre_search",
-  "mode": "knowledge" | "research" | "compare" | "centre_search",
-  "subqueries": ["query 1", "query 2"],
+  "intent": "knowledge",
+  "mode": "knowledge" | "research" | "compare",
+  "subqueries": [
+    "query 1",
+    "query 2"
+  ],
   "centre_query": "",
   "reason": "short reason"
 }}
 
 USER QUESTION:
-{question}
+{q}
 
 ANSWER LANGUAGE:
 {language}
@@ -640,60 +778,60 @@ ANSWER LANGUAGE:
         )
 
         if plan:
-            intent = plan.get(
-                "intent"
+            raw_queries = (
+                plan.get(
+                    "subqueries"
+                )
+                or [q]
             )
 
-            if intent not in {
+            queries = []
+
+            for query in raw_queries:
+                query = str(
+                    query
+                ).strip()
+
+                if (
+                    query
+                    and query not in queries
+                ):
+                    queries.append(
+                        query
+                    )
+
+            plan[
+                "intent"
+            ] = "knowledge"
+
+            plan[
+                "subqueries"
+            ] = (
+                queries[
+                    :AGENT_MAX_SUBQUERIES
+                ]
+                or [q]
+            )
+
+            plan[
+                "centre_query"
+            ] = ""
+
+            mode = plan.get(
+                "mode",
+                "research"
+            )
+
+            if mode not in {
                 "knowledge",
-                "centre_search"
+                "research",
+                "compare"
             }:
-                intent = "knowledge"
+                mode = "research"
 
-            plan["intent"] = intent
-
-            if intent == "centre_search":
-                plan["mode"] = (
-                    "centre_search"
-                )
-                plan["subqueries"] = []
-                plan["centre_query"] = (
-                    plan.get(
-                        "centre_query"
-                    )
-                    or question
-                )
-            else:
-                raw_queries = (
-                    plan.get(
-                        "subqueries"
-                    )
-                    or [question]
-                )
-
-                queries = []
-
-                for query in raw_queries:
-                    query = str(
-                        query
-                    ).strip()
-
-                    if (
-                        query
-                        and query not in queries
-                    ):
-                        queries.append(
-                            query
-                        )
-
-                plan["subqueries"] = (
-                    queries[
-                        :AGENT_MAX_SUBQUERIES
-                    ]
-                    or [question]
-                )
-
-                plan["centre_query"] = ""
+            plan[
+                "mode"
+            ] = mode
 
             return (
                 plan,
@@ -705,7 +843,7 @@ ANSWER LANGUAGE:
 
     return (
         heuristic_plan(
-            question
+            q
         ),
         "Heuristic"
     )
@@ -1037,6 +1175,107 @@ RETRIEVED CONTEXT:
 """
 
 
+
+def _agent_cache_question(
+    question: str
+) -> str:
+    return (
+        "AGENTIC::"
+        + (
+            question
+            or ""
+        ).strip()
+    )
+
+
+def get_agent_cache(
+    question: str,
+    language: str
+) -> Optional[Dict[str, Any]]:
+    try:
+        cached = get_exact_cache(
+            _agent_cache_question(
+                question
+            ),
+            language
+        )
+
+        if not cached:
+            return None
+
+        response = dict(
+            cached.get(
+                "response",
+                {}
+            )
+        )
+
+        response[
+            "question"
+        ] = question
+
+        response[
+            "language"
+        ] = language
+
+        response[
+            "provider"
+        ] = "Cache"
+
+        response[
+            "cache_hit"
+        ] = True
+
+        response[
+            "cache_type"
+        ] = "exact"
+
+        response[
+            "agentic"
+        ] = True
+
+        return response
+
+    except Exception as error:
+        print(
+            "Agent cache lookup error:",
+            error,
+            flush=True
+        )
+
+        return None
+
+
+def save_agent_cache(
+    question: str,
+    language: str,
+    query_embedding: List[float],
+    response: Dict[str, Any]
+) -> None:
+    try:
+        save_cache_entry(
+            _agent_cache_question(
+                question
+            ),
+            language,
+            query_embedding,
+            response
+        )
+
+        print(
+            "Agent response saved to cache:",
+            question,
+            flush=True
+        )
+
+    except Exception as error:
+        print(
+            "Agent cache save error:",
+            error,
+            flush=True
+        )
+
+
 def execute_agent(
     question: str,
     language: str = "English"
@@ -1059,6 +1298,23 @@ def execute_agent(
             "error":
                 "Question cannot be empty."
         }
+
+    # --------------------------------------------------------
+    # Exact Agentic cache
+    # --------------------------------------------------------
+    cached_response = get_agent_cache(
+        question,
+        language
+    )
+
+    if cached_response:
+        print(
+            "Agent exact cache hit:",
+            question,
+            flush=True
+        )
+
+        return cached_response
 
     plan_started = (
         time.perf_counter()
@@ -1294,7 +1550,7 @@ def execute_agent(
             }
         }
 
-    return {
+    response = {
         "question":
             question,
         "language":
@@ -1330,6 +1586,8 @@ def execute_agent(
                 "trace",
                 []
             ),
+        "cache_hit":
+            False,
         "timing": {
             "plan_seconds":
                 plan_seconds,
@@ -1348,3 +1606,31 @@ def execute_agent(
                 )
         }
     }
+
+    # --------------------------------------------------------
+    # Save successful Agentic answer.
+    # The exact cache key uses an AGENTIC:: prefix so it does
+    # not collide with the normal /api/search answer cache.
+    # --------------------------------------------------------
+    try:
+        cache_embedding = (
+            create_query_embedding(
+                question
+            )
+        )
+
+        save_agent_cache(
+            question,
+            language,
+            cache_embedding,
+            response
+        )
+
+    except Exception as error:
+        print(
+            "Unable to create Agent cache embedding:",
+            error,
+            flush=True
+        )
+
+    return response
