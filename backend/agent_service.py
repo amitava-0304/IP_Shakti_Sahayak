@@ -437,6 +437,19 @@ DEFAULT_GUIDED_TOPICS = [
 
 
 FOLLOW_UP_LIBRARY = {
+    "madrid system": [
+        "Explain the Madrid System in simpler terms.",
+        "What are the important features of the Madrid System?",
+        "What are the advantages of the Madrid System?",
+        "How does international trademark registration work under the Madrid System?",
+        "What is WIPO's role in the Madrid System?"
+    ],
+    "patentscope": [
+        "What information can I search in PATENTSCOPE?",
+        "How can PATENTSCOPE help patent research?",
+        "What are the important features of PATENTSCOPE?",
+        "What is the PCT system?"
+    ],
     "patent": [
         "What are the basic requirements for patentability?",
         "What is PATENTSCOPE?",
@@ -445,17 +458,13 @@ FOLLOW_UP_LIBRARY = {
     "trademark": [
         "What makes a trademark distinctive?",
         "How is a trademark different from a patent?",
-        "What is the Madrid System?"
+        "What is the Madrid System?",
+        "How can trademarks be registered internationally?"
     ],
     "copyright": [
         "What types of works can copyright protect?",
         "Why is copyright protection important?",
         "How is copyright different from a trademark?"
-    ],
-    "patentscope": [
-        "What information can I search in PATENTSCOPE?",
-        "How can PATENTSCOPE help patent research?",
-        "What is the PCT system?"
     ],
     "traditional knowledge": [
         "How can traditional knowledge be protected?",
@@ -470,6 +479,7 @@ FOLLOW_UP_LIBRARY = {
     "default": [
         "Explain this topic in simpler terms.",
         "What are the important features of this topic?",
+        "What are the practical benefits of this topic?",
         "What related topic should I learn next?"
     ]
 }
@@ -1233,6 +1243,13 @@ def get_agent_cache(
         response[
             "agentic"
         ] = True
+
+        # Always rebuild follow-up suggestions from current code.
+        response[
+            "suggested_questions"
+        ] = get_follow_up_questions(
+            question
+        )
 
         return response
 

@@ -951,9 +951,30 @@
         .agent-help { margin-top:14px; color:#64748b; font-size:.9rem; }
         .follow-up-section { display:none; margin-top:22px; padding-top:18px; border-top:1px solid #e5e7eb; }
         .follow-up-section h4 { margin:0 0 12px; color:#334155; font-size:1rem; }
-        .follow-up-buttons { display:flex; flex-wrap:wrap; gap:9px; }
-        .follow-up-btn { padding:9px 13px; border:1px solid #dbe4ff; border-radius:999px; color:#4338ca; background:#f8faff; cursor:pointer; font-weight:700; }
-        .follow-up-btn:hover { color:white; background:linear-gradient(135deg,#6366f1,#8b5cf6); }
+        .follow-up-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .follow-up-btn {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #dbe4ff;
+            border-radius: 12px;
+            color: #4338ca;
+            background: #f8faff;
+            cursor: pointer;
+            font-weight: 700;
+            text-align: left;
+            line-height: 1.45;
+            white-space: normal;
+        }
+
+        .follow-up-btn:hover {
+            color: white;
+            background: linear-gradient(135deg,#6366f1,#8b5cf6);
+        }
         .agent-mode-display { display:inline-flex; margin-top:16px; margin-left:7px; padding:7px 11px; border-radius:999px; color:#3730a3; background:#eef2ff; font-weight:800; font-size:.86rem; }
 
     </style>
@@ -1600,12 +1621,18 @@
             section.style.display = "none";
             return;
         }
-        questions.forEach(function(question) {
+        questions.forEach(function(question, index) {
             const button = document.createElement("button");
             button.type = "button";
             button.className = "follow-up-btn";
-            button.textContent = question;
-            button.onclick = function() { startGuidedQuestion(question); };
+            button.textContent = (index + 1) + ". " + question;
+            button.setAttribute(
+                "aria-label",
+                "Follow-up question " + (index + 1) + ": " + question
+            );
+            button.onclick = function() {
+                startGuidedQuestion(question);
+            };
             box.appendChild(button);
         });
         section.style.display = "block";
