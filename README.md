@@ -18,7 +18,7 @@
 ---
 ## 🏗️ AyurSetu Agentic RAG Architecture
 
-![AyurSetu Agentic RAG Architecture](docs/ayursetu_agentic_rag_architecture.png)
+![AyurSetu Agentic RAG Architecture](docs/AyurSetu_Agentic_RAG_Infographic.png)
 ## 🧠 About the Project
 
 **AyurSetu Agentic RAG** is a multilingual AI assistant that combines **Agentic RAG, vector search, document processing, OCR and large language models**.
