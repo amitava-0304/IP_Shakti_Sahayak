@@ -2,125 +2,253 @@ from contextlib import asynccontextmanager
 
 
 
+
+
+
+
 import json
+
+
 
 import os
 
+
+
 import shutil
+
+
 
 import threading
 
+
+
 import time
+
+
 
 import uuid
 
 
 
+
+
+
+
 from fastapi import FastAPI, UploadFile, File
+
+
 
 from fastapi.middleware.cors import CORSMiddleware
 
+
+
 from fastapi.responses import FileResponse, StreamingResponse
+
+
 
 from pydantic import BaseModel
 
+
+
 from dotenv import load_dotenv
 
+
+
 from google import genai
+
+
 
 from groq import Groq
 
 
 
-try:
-    from .agent_router import router as agent_router
-except ImportError:
-    from agent_router import router as agent_router
+
+
 
 
 try:
 
-    from .rag import (
-
-        search_documents,
-
-        get_collection_counts,
-
-        create_query_embedding
-
-    )
-
-    from .map_service import search_places
-
-    from .ingest import ensure_main_database
-
-    from .job_store import (
-
-        init_job_database,
-
-        create_job,
-
-        get_job
-
-    )
-
-    from .worker import document_worker_loop
-
-    from .semantic_cache import (
-
-        get_exact_cache,
-
-        get_semantic_cache,
-
-        save_cache_entry,
-
-        clear_semantic_cache,
-
-        get_cache_stats
-
-    )
+    from .agent_router import router as agent_router
 
 except ImportError:
 
-    from rag import (
+    from agent_router import router as agent_router
 
-        search_documents,
 
-        get_collection_counts,
 
-        create_query_embedding
 
-    )
 
-    from map_service import search_places
+try:
 
-    from ingest import ensure_main_database
 
-    from job_store import (
 
-        init_job_database,
+    from .rag import (
 
-        create_job,
 
-        get_job
 
-    )
+        search_documents,
 
-    from worker import document_worker_loop
 
-    from semantic_cache import (
 
-        get_exact_cache,
+        get_collection_counts,
 
-        get_semantic_cache,
 
-        save_cache_entry,
 
-        clear_semantic_cache,
+        create_query_embedding
 
-        get_cache_stats
 
-    )
+
+    )
+
+
+
+    from .map_service import search_places
+
+
+
+    from .ingest import ensure_main_database
+
+
+
+    from .job_store import (
+
+
+
+        init_job_database,
+
+
+
+        create_job,
+
+
+
+        get_job
+
+
+
+    )
+
+
+
+    from .worker import document_worker_loop
+
+
+
+    from .semantic_cache import (
+
+
+
+        get_exact_cache,
+
+
+
+        get_semantic_cache,
+
+
+
+        save_cache_entry,
+
+
+
+        clear_semantic_cache,
+
+
+
+        get_cache_stats
+
+
+
+    )
+
+
+
+except ImportError:
+
+
+
+    from rag import (
+
+
+
+        search_documents,
+
+
+
+        get_collection_counts,
+
+
+
+        create_query_embedding
+
+
+
+    )
+
+
+
+    from map_service import search_places
+
+
+
+    from ingest import ensure_main_database
+
+
+
+    from job_store import (
+
+
+
+        init_job_database,
+
+
+
+        create_job,
+
+
+
+        get_job
+
+
+
+    )
+
+
+
+    from worker import document_worker_loop
+
+
+
+    from semantic_cache import (
+
+
+
+        get_exact_cache,
+
+
+
+        get_semantic_cache,
+
+
+
+        save_cache_entry,
+
+
+
+        clear_semantic_cache,
+
+
+
+        get_cache_stats
+
+
+
+    )
+
+
+
+
+
+
 
 
 
@@ -128,133 +256,267 @@ except ImportError:
 
 BASE_DIR = os.path.dirname(
 
-    os.path.dirname(
 
-        os.path.abspath(__file__)
 
-    )
+    os.path.dirname(
+
+
+
+        os.path.abspath(\_\_file\_\_)
+
+
+
+    )
+
+
 
 )
+
+
+
+
 
 
 
 load_dotenv(
 
-    os.path.join(
 
-        BASE_DIR,
 
-        ".env"
+    os.path.join(
 
-    )
+
+
+        BASE_DIR,
+
+
+
+        ".env"
+
+
+
+    )
+
+
 
 )
+
+
+
+
 
 
 
 STORAGE_ROOT = os.getenv(
 
-    "STORAGE_ROOT",
 
-    BASE_DIR
+
+    "STORAGE_ROOT",
+
+
+
+    BASE_DIR
+
+
 
 )
+
+
+
+
 
 
 
 UPLOAD_FOLDER = os.path.join(
 
-    STORAGE_ROOT,
 
-    "uploaded_files"
+
+    STORAGE_ROOT,
+
+
+
+    "uploaded_files"
+
+
 
 )
+
+
+
+
 
 
 
 FRONTEND_FOLDER = os.path.join(
 
-    BASE_DIR,
 
-    "frontend"
+
+    BASE_DIR,
+
+
+
+    "frontend"
+
+
 
 )
+
+
+
+
 
 
 
 INDEX_FILE = os.path.join(
 
-    FRONTEND_FOLDER,
 
-    "index.html"
+
+    FRONTEND_FOLDER,
+
+
+
+    "index.html"
+
+
 
 )
+
+
+
+
 
 
 
 os.makedirs(
 
-    UPLOAD_FOLDER,
 
-    exist_ok=True
+
+    UPLOAD_FOLDER,
+
+
+
+    exist_ok=True
+
+
 
 )
+
+
+
+
 
 
 
 GEMINI_API_KEY = os.getenv(
 
-    "GEMINI_API_KEY"
+
+
+    "GEMINI_API_KEY"
+
+
 
 )
+
+
+
+
 
 
 
 GROQ_API_KEY = os.getenv(
 
-    "GROQ_API_KEY"
+
+
+    "GROQ_API_KEY"
+
+
 
 )
+
+
+
+
 
 
 
 SERPAPI_API_KEY = os.getenv(
 
-    "SERPAPI_API_KEY"
+
+
+    "SERPAPI_API_KEY"
+
+
 
 )
+
+
+
+
 
 
 
 gemini_client = (
 
-    genai.Client(
 
-        api_key=GEMINI_API_KEY
 
-    )
+    genai.Client(
 
-    if GEMINI_API_KEY
 
-    else None
+
+        api_key=GEMINI_API_KEY
+
+
+
+    )
+
+
+
+    if GEMINI_API_KEY
+
+
+
+    else None
+
+
 
 )
+
+
+
+
 
 
 
 groq_client = (
 
-    Groq(
 
-        api_key=GROQ_API_KEY
 
-    )
+    Groq(
 
-    if GROQ_API_KEY
 
-    else None
+
+        api_key=GROQ_API_KEY
+
+
+
+    )
+
+
+
+    if GROQ_API_KEY
+
+
+
+    else None
+
+
 
 )
+
+
+
+
+
+
 
 
 
@@ -262,47 +524,95 @@ groq_client = (
 
 def start_knowledge_base_indexing():
 
-    try:
-
-        result = ensure_main_database()
 
 
-
-        # Permanent knowledge-base changes can make cached answers stale.
-
-        clear_semantic_cache()
+    try:
 
 
 
-        print(
-
-            "Knowledge base startup:",
-
-            result,
-
-            flush=True
-
-        )
-
-
-
-    except Exception as error:
-
-        print(
-
-            "Knowledge base startup failed:",
-
-            repr(error),
-
-            flush=True
-
-        )
+        result = ensure_main_database()
 
 
 
 
 
-_worker_started = False
+
+
+        # Permanent knowledge-base changes can make cached answers stale.
+
+
+
+        clear_semantic_cache()
+
+
+
+
+
+
+
+        print(
+
+
+
+            "Knowledge base startup:",
+
+
+
+            result,
+
+
+
+            flush=True
+
+
+
+        )
+
+
+
+
+
+
+
+    except Exception as error:
+
+
+
+        print(
+
+
+
+            "Knowledge base startup failed:",
+
+
+
+            repr(error),
+
+
+
+            flush=True
+
+
+
+        )
+
+
+
+
+
+
+
+
+
+
+
+\_worker_started = False
+
+
+
+
+
+
 
 
 
@@ -310,45 +620,91 @@ _worker_started = False
 
 def start_document_worker_once():
 
-    global _worker_started
+
+
+    global \_worker_started
 
 
 
-    if _worker_started:
-
-        return
 
 
 
-    _worker_started = True
+
+    if \_worker_started:
 
 
 
-    thread = threading.Thread(
-
-        target=document_worker_loop,
-
-        daemon=True,
-
-        name="document-worker"
-
-    )
+        return
 
 
 
-    thread.start()
 
 
 
-    print(
 
-        "Persistent document worker "
+    \_worker_started = True
 
-        "started in background.",
 
-        flush=True
 
-    )
+
+
+
+
+    thread = threading.Thread(
+
+
+
+        target=document_worker_loop,
+
+
+
+        daemon=True,
+
+
+
+        name="document-worker"
+
+
+
+    )
+
+
+
+
+
+
+
+    thread.start()
+
+
+
+
+
+
+
+    print(
+
+
+
+        "Persistent document worker "
+
+
+
+        "started in background.",
+
+
+
+        flush=True
+
+
+
+    )
+
+
+
+
+
+
 
 
 
@@ -356,75 +712,151 @@ def start_document_worker_once():
 
 @asynccontextmanager
 
+
+
 async def lifespan(app: FastAPI):
 
-    init_job_database()
+
+
+    init_job_database()
 
 
 
-    start_document_worker_once()
 
 
 
-    auto_ingest = (
 
-        os.getenv(
-
-            "AUTO_INGEST_ON_START",
-
-            "false"
-
-        )
-
-        .strip()
-
-        .lower()
-
-        in {
-
-            "1",
-
-            "true",
-
-            "yes",
-
-            "on"
-
-        }
-
-    )
+    start_document_worker_once()
 
 
 
-    if auto_ingest:
-
-        thread = threading.Thread(
-
-            target=start_knowledge_base_indexing,
-
-            daemon=True
-
-        )
 
 
 
-        thread.start()
+
+    auto_ingest = (
 
 
 
-        print(
-
-            "Knowledge base indexing "
-
-            "started in background.",
-
-            flush=True
-
-        )
+        os.getenv(
 
 
 
-    yield
+            "AUTO_INGEST_ON_START",
+
+
+
+            "false"
+
+
+
+        )
+
+
+
+        .strip()
+
+
+
+        .lower()
+
+
+
+        in {
+
+
+
+            "1",
+
+
+
+            "true",
+
+
+
+            "yes",
+
+
+
+            "on"
+
+
+
+        }
+
+
+
+    )
+
+
+
+
+
+
+
+    if auto_ingest:
+
+
+
+        thread = threading.Thread(
+
+
+
+            target=start_knowledge_base_indexing,
+
+
+
+            daemon=True
+
+
+
+        )
+
+
+
+
+
+
+
+        thread.start()
+
+
+
+
+
+
+
+        print(
+
+
+
+            "Knowledge base indexing "
+
+
+
+            "started in background.",
+
+
+
+            flush=True
+
+
+
+        )
+
+
+
+
+
+
+
+    yield
+
+
+
+
+
+
 
 
 
@@ -432,45 +864,91 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
 
-    title="AyurSetu AI API",
 
-    description=(
 
-        "Multilingual RAG-based IP "
+    title="AyurSetu Agentic RAG API",
 
-        "and Ayurveda assistant"
 
-    ),
 
-    version="3.0.0",
+    description=(
 
-    lifespan=lifespan
+
+
+        "Multilingual RAG-based IP "
+
+
+
+        "and Ayurveda assistant"
+
+
+
+    ),
+
+
+
+    version="3.0.0",
+
+
+
+    lifespan=lifespan
+
+
 
 )
+
+
+
+
 
 
 
 app.add_middleware(
 
-    CORSMiddleware,
 
-    allow_origins=["*"],
 
-    allow_credentials=True,
+    CORSMiddleware,
 
-    allow_methods=["*"],
 
-    allow_headers=["*"]
+
+    allow_origins=["\*"],
+
+
+
+    allow_credentials=True,
+
+
+
+    allow_methods=["\*"],
+
+
+
+    allow_headers=["\*"]
+
+
 
 )
 
 
-# Controlled Agentic AI endpoints:
-# GET  /api/agent-guide
-# POST /api/agent-search
+
+
+
+\# Controlled Agentic AI endpoints:
+
+\# GET  /api/agent-guide
+
+\# POST /api/agent-search
+
 app.include_router(
-    agent_router
+
+    agent_router
+
 )
+
+
+
+
+
+
 
 
 
@@ -478,9 +956,19 @@ app.include_router(
 
 class ChatRequest(BaseModel):
 
-    question: str
 
-    language: str = "English"
+
+    question: str
+
+
+
+    language: str = "English"
+
+
+
+
+
+
 
 
 
@@ -488,83 +976,167 @@ class ChatRequest(BaseModel):
 
 class CentreSearchRequest(BaseModel):
 
-    location: str
 
-    latitude: float | None = None
 
-    longitude: float | None = None
+    location: str
+
+
+
+    latitude: float | None = None
+
+
+
+    longitude: float | None = None
+
+
+
 
 
 def normalize_language(language):
-    value = (language or "English").strip().lower()
 
-    language_map = {
-        "english": "English",
-        "en": "English",
-        "bengali": "Bengali",
-        "bangla": "Bengali",
-        "বাংলা": "Bengali",
-        "bn": "Bengali",
-        "hindi": "Hindi",
-        "हिन्दी": "Hindi",
-        "हिंदी": "Hindi",
-        "hi": "Hindi",
-    }
+    value = (language or "English").strip().lower()
 
-    return language_map.get(value, "English")
+
+
+    language_map = {
+
+        "english": "English",
+
+        "en": "English",
+
+        "bengali": "Bengali",
+
+        "bangla": "Bengali",
+
+        "বাংলা": "Bengali",
+
+        "bn": "Bengali",
+
+        "hindi": "Hindi",
+
+        "हिन्दी": "Hindi",
+
+        "हिंदी": "Hindi",
+
+        "hi": "Hindi",
+
+    }
+
+
+
+    return language_map.get(value, "English")
+
+
+
 
 
 def get_language_instruction(language):
-    language = normalize_language(language)
 
-    if language == "Bengali":
-        return (
-            "IMPORTANT: Write the complete final answer in Bengali using Bengali script. "
-            "Translate the retrieved source information into natural Bengali. "
-            "Do not write explanatory sentences in English. "
-            "English is allowed only for unavoidable proper names, acronyms, "
-            "official document titles, section numbers, or technical terms."
-        )
+    language = normalize_language(language)
 
-    if language == "Hindi":
-        return (
-            "IMPORTANT: Write the complete final answer in Hindi using Devanagari script. "
-            "Translate the retrieved source information into natural Hindi. "
-            "Do not write explanatory sentences in English. "
-            "English is allowed only for unavoidable proper names, acronyms, "
-            "official document titles, section numbers, or technical terms."
-        )
 
-    return "Write the complete final answer in English."
+
+    if language == "Bengali":
+
+        return (
+
+            "IMPORTANT: Write the complete final answer in Bengali using Bengali script. "
+
+            "Translate the retrieved source information into natural Bengali. "
+
+            "Do not write explanatory sentences in English. "
+
+            "English is allowed only for unavoidable proper names, acronyms, "
+
+            "official document titles, section numbers, or technical terms."
+
+        )
+
+
+
+    if language == "Hindi":
+
+        return (
+
+            "IMPORTANT: Write the complete final answer in Hindi using Devanagari script. "
+
+            "Translate the retrieved source information into natural Hindi. "
+
+            "Do not write explanatory sentences in English. "
+
+            "English is allowed only for unavoidable proper names, acronyms, "
+
+            "official document titles, section numbers, or technical terms."
+
+        )
+
+
+
+    return "Write the complete final answer in English."
+
+
+
 
 
 def answer_matches_language(answer, language):
-    if not answer:
-        return False
 
-    language = normalize_language(language)
+    if not answer:
 
-    if language == "Bengali":
-        bengali_chars = sum(
-            1 for ch in answer
-            if "\u0980" <= ch <= "\u09FF"
-        )
-        letters = sum(1 for ch in answer if ch.isalpha())
-        return bengali_chars >= 20 and (
-            letters == 0 or bengali_chars / letters >= 0.35
-        )
+        return False
 
-    if language == "Hindi":
-        devanagari_chars = sum(
-            1 for ch in answer
-            if "\u0900" <= ch <= "\u097F"
-        )
-        letters = sum(1 for ch in answer if ch.isalpha())
-        return devanagari_chars >= 20 and (
-            letters == 0 or devanagari_chars / letters >= 0.35
-        )
 
-    return True
+
+    language = normalize_language(language)
+
+
+
+    if language == "Bengali":
+
+        bengali_chars = sum(
+
+            1 for ch in answer
+
+            if "\u0980" <= ch <= "\u09FF"
+
+        )
+
+        letters = sum(1 for ch in answer if ch.isalpha())
+
+        return bengali_chars >= 20 and (
+
+            letters == 0 or bengali_chars / letters >= 0.35
+
+        )
+
+
+
+    if language == "Hindi":
+
+        devanagari_chars = sum(
+
+            1 for ch in answer
+
+            if "\u0900" <= ch <= "\u097F"
+
+        )
+
+        letters = sum(1 for ch in answer if ch.isalpha())
+
+        return devanagari_chars >= 20 and (
+
+            letters == 0 or devanagari_chars / letters >= 0.35
+
+        )
+
+
+
+    return True
+
+
+
+
+
+
 
 
 
@@ -572,31 +1144,63 @@ def answer_matches_language(answer, language):
 
 @app.get("/")
 
+
+
 def frontend_home():
 
-    if os.path.exists(
 
-        INDEX_FILE
 
-    ):
-
-        return FileResponse(
-
-            INDEX_FILE
-
-        )
+    if os.path.exists(
 
 
 
-    return {
+        INDEX_FILE
 
-        "message":
 
-            "AyurSetu AI "
 
-            "API is running."
+    ):
 
-    }
+
+
+        return FileResponse(
+
+
+
+            INDEX_FILE
+
+
+
+        )
+
+
+
+
+
+
+
+    return {
+
+
+
+        "message":
+
+
+
+            "AyurSetu Agentic RAG "
+
+
+
+            "API is running."
+
+
+
+    }
+
+
+
+
+
+
 
 
 
@@ -604,13 +1208,27 @@ def frontend_home():
 
 @app.get("/health")
 
+
+
 def health():
 
-    return {
 
-        "status": "ok"
 
-    }
+    return {
+
+
+
+        "status": "ok"
+
+
+
+    }
+
+
+
+
+
+
 
 
 
@@ -618,91 +1236,183 @@ def health():
 
 @app.get("/api/status")
 
+
+
 def api_status():
 
-    try:
 
-        counts = (
 
-            get_collection_counts()
-
-        )
-
-    except Exception as error:
-
-        print(
-
-            "Status collection error:",
-
-            repr(error),
-
-            flush=True
-
-        )
+    try:
 
 
 
-        counts = {
-
-            "main": 0,
-
-            "uploads": 0
-
-        }
+        counts = (
 
 
 
-    cache_stats = get_cache_stats()
+            get_collection_counts()
 
 
 
-    return {
+        )
 
-        "message":
 
-            "AyurSetu AI API is running",
 
-        "semantic_cache_entries":
+    except Exception as error:
 
-            cache_stats.get("entries", 0),
 
-        "semantic_cache_hits":
 
-            cache_stats.get("hits", 0),
+        print(
 
-        "gemini_configured":
 
-            bool(GEMINI_API_KEY),
 
-        "groq_configured":
+            "Status collection error:",
 
-            bool(GROQ_API_KEY),
 
-        "serpapi_configured":
 
-            bool(SERPAPI_API_KEY),
+            repr(error),
 
-        "main_chunks":
 
-            counts.get(
 
-                "main",
+            flush=True
 
-                0
 
-            ),
 
-        "uploaded_chunks":
+        )
 
-            counts.get(
 
-                "uploads",
 
-                0
 
-            )
 
-    }
+
+
+        counts = {
+
+
+
+            "main": 0,
+
+
+
+            "uploads": 0
+
+
+
+        }
+
+
+
+
+
+
+
+    cache_stats = get_cache_stats()
+
+
+
+
+
+
+
+    return {
+
+
+
+        "message":
+
+
+
+            "AyurSetu Agentic RAG API is running",
+
+
+
+        "semantic_cache_entries":
+
+
+
+            cache_stats.get("entries", 0),
+
+
+
+        "semantic_cache_hits":
+
+
+
+            cache_stats.get("hits", 0),
+
+
+
+        "gemini_configured":
+
+
+
+            bool(GEMINI_API_KEY),
+
+
+
+        "groq_configured":
+
+
+
+            bool(GROQ_API_KEY),
+
+
+
+        "serpapi_configured":
+
+
+
+            bool(SERPAPI_API_KEY),
+
+
+
+        "main_chunks":
+
+
+
+            counts.get(
+
+
+
+                "main",
+
+
+
+                0
+
+
+
+            ),
+
+
+
+        "uploaded_chunks":
+
+
+
+            counts.get(
+
+
+
+                "uploads",
+
+
+
+                0
+
+
+
+            )
+
+
+
+    }
+
+
+
+
+
+
 
 
 
@@ -710,165 +1420,331 @@ def api_status():
 
 @app.post("/api/upload")
 
+
+
 async def upload_file(
 
-    file: UploadFile = File(...)
+
+
+    file: UploadFile = File(...)
+
+
 
 ):
 
-    try:
 
-        if not file.filename:
 
-            return {
+    try:
 
-                "error":
 
-                    "No file selected."
 
-            }
+        if not file.filename:
 
 
 
-        safe_filename = (
+            return {
 
-            os.path.basename(
 
-                file.filename
 
-            )
+                "error":
 
-        )
 
 
+                    "No file selected."
 
-        extension = (
 
-            os.path.splitext(
 
-                safe_filename
+            }
 
-            )[1]
 
-            .lower()
 
-        )
 
 
 
-        if extension not in (
 
-            ".pdf",
+        safe_filename = (
 
-            ".txt",
 
-            ".docx"
 
-        ):
+            os.path.basename(
 
-            return {
 
-                "error":
 
-                    "Unsupported file type. "
+                file.filename
 
-                    "Please upload PDF, "
 
-                    "TXT or DOCX."
 
-            }
+            )
 
 
 
-        file_path = os.path.join(
+        )
 
-            UPLOAD_FOLDER,
 
-            safe_filename
 
-        )
 
 
 
-        with open(
 
-            file_path,
+        extension = (
 
-            "wb"
 
-        ) as buffer:
 
-            shutil.copyfileobj(
+            os.path.splitext(
 
-                file.file,
 
-                buffer
 
-            )
+                safe_filename
 
 
 
-        job_id = str(
+            )[1]
 
-            uuid.uuid4()
 
-        )
 
+            .lower()
 
 
-        create_job(
 
-            job_id,
+        )
 
-            safe_filename,
 
-            file_path
 
-        )
 
 
 
-        return {
 
-            "message":
+        if extension not in (
 
-                f"File '{safe_filename}' "
 
-                "uploaded successfully. "
 
-                "Document indexing has "
+            ".pdf",
 
-                "been queued.",
 
-            "filename":
 
-                safe_filename,
+            ".txt",
 
-            "job_id":
 
-                job_id,
 
-            "indexing":
+            ".docx"
 
-                True,
 
-            "searchable":
 
-                False
+        ):
 
-        }
 
 
+            return {
 
-    except Exception as error:
 
-        return {
 
-            "error":
+                "error":
 
-                f"Upload failed: {error}"
 
-        }
+
+                    "Unsupported file type. "
+
+
+
+                    "Please upload PDF, "
+
+
+
+                    "TXT or DOCX."
+
+
+
+            }
+
+
+
+
+
+
+
+        file_path = os.path.join(
+
+
+
+            UPLOAD_FOLDER,
+
+
+
+            safe_filename
+
+
+
+        )
+
+
+
+
+
+
+
+        with open(
+
+
+
+            file_path,
+
+
+
+            "wb"
+
+
+
+        ) as buffer:
+
+
+
+            shutil.copyfileobj(
+
+
+
+                file.file,
+
+
+
+                buffer
+
+
+
+            )
+
+
+
+
+
+
+
+        job_id = str(
+
+
+
+            uuid.uuid4()
+
+
+
+        )
+
+
+
+
+
+
+
+        create_job(
+
+
+
+            job_id,
+
+
+
+            safe_filename,
+
+
+
+            file_path
+
+
+
+        )
+
+
+
+
+
+
+
+        return {
+
+
+
+            "message":
+
+
+
+                f"File '{safe_filename}' "
+
+
+
+                "uploaded successfully. "
+
+
+
+                "Document indexing has "
+
+
+
+                "been queued.",
+
+
+
+            "filename":
+
+
+
+                safe_filename,
+
+
+
+            "job_id":
+
+
+
+                job_id,
+
+
+
+            "indexing":
+
+
+
+                True,
+
+
+
+            "searchable":
+
+
+
+                False
+
+
+
+        }
+
+
+
+
+
+
+
+    except Exception as error:
+
+
+
+        return {
+
+
+
+            "error":
+
+
+
+                f"Upload failed: {error}"
+
+
+
+        }
+
+
+
+
+
+
 
 
 
@@ -876,219 +1752,439 @@ async def upload_file(
 
 @app.get(
 
-    "/api/upload-status/{job_id}"
+
+
+    "/api/upload-status/{job_id}"
+
+
 
 )
 
+
+
 def upload_status(
 
-    job_id: str
+
+
+    job_id: str
+
+
 
 ):
 
-    job = get_job(
 
-        job_id
 
-    )
+    job = get_job(
 
 
 
-    if not job:
+        job_id
 
-        return {
 
-            "status":
 
-                "unknown",
+    )
 
-            "error":
 
-                "Upload job was not found."
 
-        }
 
 
 
-    end_time = (
 
-        job.get(
+    if not job:
 
-            "finished_at"
 
-        )
 
-        or time.time()
+        return {
 
-    )
 
 
+            "status":
 
-    elapsed = int(
 
-        end_time
 
-        - job["started_at"]
+                "unknown",
 
-    )
 
 
+            "error":
 
-    total_pages = int(
 
-        job.get(
 
-            "total_pages",
+                "Upload job was not found."
 
-            0
 
-        )
 
-        or 0
+        }
 
-    )
 
 
 
-    current_page = int(
 
-        job.get(
 
-            "current_page",
 
-            0
+    end_time = (
 
-        )
 
-        or 0
 
-    )
+        job.get(
 
 
 
-    progress_percent = (
+            "finished_at"
 
-        round(
 
-            (
 
-                current_page
+        )
 
-                / total_pages
 
-            )
 
-            * 100,
+        or time.time()
 
-            1
 
-        )
 
-        if total_pages > 0
+    )
 
-        else 0.0
 
-    )
 
 
 
-    return {
 
-        "job_id":
 
-            job_id,
+    elapsed = int(
 
-        "filename":
 
-            job.get(
 
-                "filename"
+        end_time
 
-            ),
 
-        "status":
 
-            job.get(
+        - job["started_at"]
 
-                "status"
 
-            ),
 
-        "stage":
+    )
 
-            job.get(
 
-                "stage"
 
-            ),
 
-        "elapsed_seconds":
 
-            elapsed,
 
-        "current_page":
 
-            current_page,
+    total_pages = int(
 
-        "total_pages":
 
-            total_pages,
 
-        "progress_percent":
+        job.get(
 
-            progress_percent,
 
-        "chunks":
 
-            int(
+            "total_pages",
 
-                job.get(
 
-                    "chunks",
 
-                    0
+            0
 
-                )
 
-                or 0
 
-            ),
+        )
 
-        "searchable":
 
-            bool(
 
-                job.get(
+        or 0
 
-                    "searchable",
 
-                    0
 
-                )
+    )
 
-            ),
 
-        "message":
 
-            job.get(
 
-                "message",
 
-                ""
 
-            ),
 
-        "error":
+    current_page = int(
 
-            job.get(
 
-                "error",
 
-                ""
+        job.get(
 
-            )
 
-    }
+
+            "current_page",
+
+
+
+            0
+
+
+
+        )
+
+
+
+        or 0
+
+
+
+    )
+
+
+
+
+
+
+
+    progress_percent = (
+
+
+
+        round(
+
+
+
+            (
+
+
+
+                current_page
+
+
+
+                / total_pages
+
+
+
+            )
+
+
+
+            \* 100,
+
+
+
+            1
+
+
+
+        )
+
+
+
+        if total_pages > 0
+
+
+
+        else 0.0
+
+
+
+    )
+
+
+
+
+
+
+
+    return {
+
+
+
+        "job_id":
+
+
+
+            job_id,
+
+
+
+        "filename":
+
+
+
+            job.get(
+
+
+
+                "filename"
+
+
+
+            ),
+
+
+
+        "status":
+
+
+
+            job.get(
+
+
+
+                "status"
+
+
+
+            ),
+
+
+
+        "stage":
+
+
+
+            job.get(
+
+
+
+                "stage"
+
+
+
+            ),
+
+
+
+        "elapsed_seconds":
+
+
+
+            elapsed,
+
+
+
+        "current_page":
+
+
+
+            current_page,
+
+
+
+        "total_pages":
+
+
+
+            total_pages,
+
+
+
+        "progress_percent":
+
+
+
+            progress_percent,
+
+
+
+        "chunks":
+
+
+
+            int(
+
+
+
+                job.get(
+
+
+
+                    "chunks",
+
+
+
+                    0
+
+
+
+                )
+
+
+
+                or 0
+
+
+
+            ),
+
+
+
+        "searchable":
+
+
+
+            bool(
+
+
+
+                job.get(
+
+
+
+                    "searchable",
+
+
+
+                    0
+
+
+
+                )
+
+
+
+            ),
+
+
+
+        "message":
+
+
+
+            job.get(
+
+
+
+                "message",
+
+
+
+                ""
+
+
+
+            ),
+
+
+
+        "error":
+
+
+
+            job.get(
+
+
+
+                "error",
+
+
+
+                ""
+
+
+
+            )
+
+
+
+    }
+
+
+
+
+
+
 
 
 
@@ -1096,85 +2192,171 @@ def upload_status(
 
 @app.post(
 
-    "/api/ayurveda-centres"
+
+
+    "/api/ayurveda-centres"
+
+
 
 )
 
+
+
 def find_ayurveda_centres(
 
-    request: CentreSearchRequest
+
+
+    request: CentreSearchRequest
+
+
 
 ):
 
-    location = (
 
-        request.location
 
-        or ""
-
-    ).strip()
+    location = (
 
 
 
-    if not location:
-
-        return {
-
-            "status":
-
-                "error",
-
-            "message":
-
-                "Please enter a city, "
-
-                "state or location.",
-
-            "results":
-
-                []
-
-        }
+        request.location
 
 
 
-    query = (
-
-        "Ayurveda centre"
-
-        if (
-
-            request.latitude
-
-            is not None
-
-            and request.longitude
-
-            is not None
-
-        )
-
-        else (
-
-            f"Ayurveda centres "
-
-            f"in {location}"
-
-        )
-
-    )
+        or ""
 
 
 
-    return search_places(
+    ).strip()
 
-        query=query,
 
-        latitude=request.latitude,
 
-        longitude=request.longitude
 
-    )
+
+
+
+    if not location:
+
+
+
+        return {
+
+
+
+            "status":
+
+
+
+                "error",
+
+
+
+            "message":
+
+
+
+                "Please enter a city, "
+
+
+
+                "state or location.",
+
+
+
+            "results":
+
+
+
+                []
+
+
+
+        }
+
+
+
+
+
+
+
+    query = (
+
+
+
+        "Ayurveda centre"
+
+
+
+        if (
+
+
+
+            request.latitude
+
+
+
+            is not None
+
+
+
+            and request.longitude
+
+
+
+            is not None
+
+
+
+        )
+
+
+
+        else (
+
+
+
+            f"Ayurveda centres "
+
+
+
+            f"in {location}"
+
+
+
+        )
+
+
+
+    )
+
+
+
+
+
+
+
+    return search_places(
+
+
+
+        query=query,
+
+
+
+        latitude=request.latitude,
+
+
+
+        longitude=request.longitude
+
+
+
+    )
+
+
+
+
+
+
 
 
 
@@ -1182,117 +2364,235 @@ def find_ayurveda_centres(
 
 def generate_with_gemini(
 
-    prompt
+
+
+    prompt
+
+
 
 ):
 
-    if not gemini_client:
 
-        return {
 
-            "success":
-
-                False,
-
-            "provider":
-
-                "Gemini",
-
-            "error":
-
-                "Gemini API key "
-
-                "is not configured."
-
-        }
+    if not gemini_client:
 
 
 
-    try:
-
-        response = (
-
-            gemini_client.models
-
-            .generate_content(
-
-                model=
-
-                    "gemini-3.6-flash",
-
-                contents=
-
-                    prompt
-
-            )
-
-        )
+        return {
 
 
 
-        if (
-
-            response
-
-            and response.text
-
-        ):
-
-            return {
-
-                "success":
-
-                    True,
-
-                "provider":
-
-                    "Gemini",
-
-                "answer":
-
-                    response.text.strip()
-
-            }
+            "success":
 
 
 
-        return {
-
-            "success":
-
-                False,
-
-            "provider":
-
-                "Gemini",
-
-            "error":
-
-                "Gemini returned "
-
-                "an empty response."
-
-        }
+                False,
 
 
 
-    except Exception as error:
+            "provider":
 
-        return {
 
-            "success":
 
-                False,
+                "Gemini",
 
-            "provider":
 
-                "Gemini",
 
-            "error":
+            "error":
 
-                str(error)
 
-        }
+
+                "Gemini API key "
+
+
+
+                "is not configured."
+
+
+
+        }
+
+
+
+
+
+
+
+    try:
+
+
+
+        response = (
+
+
+
+            gemini_client.models
+
+
+
+            .generate_content(
+
+
+
+                model=
+
+
+
+                    "gemini-3.6-flash",
+
+
+
+                contents=
+
+
+
+                    prompt
+
+
+
+            )
+
+
+
+        )
+
+
+
+
+
+
+
+        if (
+
+
+
+            response
+
+
+
+            and response.text
+
+
+
+        ):
+
+
+
+            return {
+
+
+
+                "success":
+
+
+
+                    True,
+
+
+
+                "provider":
+
+
+
+                    "Gemini",
+
+
+
+                "answer":
+
+
+
+                    response.text.strip()
+
+
+
+            }
+
+
+
+
+
+
+
+        return {
+
+
+
+            "success":
+
+
+
+                False,
+
+
+
+            "provider":
+
+
+
+                "Gemini",
+
+
+
+            "error":
+
+
+
+                "Gemini returned "
+
+
+
+                "an empty response."
+
+
+
+        }
+
+
+
+
+
+
+
+    except Exception as error:
+
+
+
+        return {
+
+
+
+            "success":
+
+
+
+                False,
+
+
+
+            "provider":
+
+
+
+                "Gemini",
+
+
+
+            "error":
+
+
+
+                str(error)
+
+
+
+        }
+
+
+
+
+
+
 
 
 
@@ -1300,143 +2600,287 @@ def generate_with_gemini(
 
 def generate_with_groq(
 
-    prompt
+
+
+    prompt
+
+
 
 ):
 
-    if not groq_client:
 
-        return {
 
-            "success":
+    if not groq_client:
 
-                False,
 
-            "provider":
 
-                "Groq",
+        return {
 
-            "error":
 
-                "Groq API key "
 
-                "is not configured."
+            "success":
 
-        }
 
 
+                False,
 
-    try:
 
-        response = (
 
-            groq_client.chat
+            "provider":
 
-            .completions
 
-            .create(
 
-                model=
+                "Groq",
 
-                    "openai/gpt-oss-120b",
 
-                messages=[
 
-                    {
+            "error":
 
-                        "role":
 
-                            "user",
 
-                        "content":
+                "Groq API key "
 
-                            prompt
 
-                    }
 
-                ],
+                "is not configured."
 
-                max_completion_tokens=
 
-                    1400
 
-            )
+        }
 
-        )
 
 
 
-        answer = (
 
-            response
 
-            .choices[0]
 
-            .message
+    try:
 
-            .content
 
-        )
 
+        response = (
 
 
-        if answer:
 
-            return {
+            groq_client.chat
 
-                "success":
 
-                    True,
 
-                "provider":
+            .completions
 
-                    "Groq",
 
-                "answer":
 
-                    answer.strip()
+            .create(
 
-            }
 
 
+                model=
 
-        return {
 
-            "success":
 
-                False,
+                    "openai/gpt-oss-120b",
 
-            "provider":
 
-                "Groq",
 
-            "error":
+                messages=[
 
-                "Groq returned "
 
-                "an empty response."
 
-        }
+                    {
 
 
 
-    except Exception as error:
+                        "role":
 
-        return {
 
-            "success":
 
-                False,
+                            "user",
 
-            "provider":
 
-                "Groq",
 
-            "error":
+                        "content":
 
-                str(error)
 
-        }
+
+                            prompt
+
+
+
+                    }
+
+
+
+                ],
+
+
+
+                max_completion_tokens=
+
+
+
+                    1400
+
+
+
+            )
+
+
+
+        )
+
+
+
+
+
+
+
+        answer = (
+
+
+
+            response
+
+
+
+            .choices[0]
+
+
+
+            .message
+
+
+
+            .content
+
+
+
+        )
+
+
+
+
+
+
+
+        if answer:
+
+
+
+            return {
+
+
+
+                "success":
+
+
+
+                    True,
+
+
+
+                "provider":
+
+
+
+                    "Groq",
+
+
+
+                "answer":
+
+
+
+                    answer.strip()
+
+
+
+            }
+
+
+
+
+
+
+
+        return {
+
+
+
+            "success":
+
+
+
+                False,
+
+
+
+            "provider":
+
+
+
+                "Groq",
+
+
+
+            "error":
+
+
+
+                "Groq returned "
+
+
+
+                "an empty response."
+
+
+
+        }
+
+
+
+
+
+
+
+    except Exception as error:
+
+
+
+        return {
+
+
+
+            "success":
+
+
+
+                False,
+
+
+
+            "provider":
+
+
+
+                "Groq",
+
+
+
+            "error":
+
+
+
+                str(error)
+
+
+
+        }
+
+
+
+
+
+
 
 
 
@@ -1444,61 +2888,123 @@ def generate_with_groq(
 
 def retrieve_search_results(
 
-    question,
 
-    query_embedding=None,
 
-    top_k=6,
+    question,
 
-    final_results=4
+
+
+    query_embedding=None,
+
+
+
+    top_k=6,
+
+
+
+    final_results=4
+
+
 
 ):
 
-    """Retrieve a small, high-quality result set."""
+
+
+    """Retrieve a small, high-quality result set."""
 
 
 
-    started = time.perf_counter()
 
 
 
-    results = search_documents(
 
-        question,
-
-        top_k=top_k,
-
-        final_results=final_results,
-
-        query_embedding=query_embedding
-
-    )
+    started = time.perf_counter()
 
 
 
-    elapsed = round(
-
-        time.perf_counter() - started,
-
-        3
-
-    )
 
 
 
-    print(
 
-        f"Document search time: "
-
-        f"{elapsed} seconds",
-
-        flush=True
-
-    )
+    results = search_documents(
 
 
 
-    return results, elapsed
+        question,
+
+
+
+        top_k=top_k,
+
+
+
+        final_results=final_results,
+
+
+
+        query_embedding=query_embedding
+
+
+
+    )
+
+
+
+
+
+
+
+    elapsed = round(
+
+
+
+        time.perf_counter() - started,
+
+
+
+        3
+
+
+
+    )
+
+
+
+
+
+
+
+    print(
+
+
+
+        f"Document search time: "
+
+
+
+        f"{elapsed} seconds",
+
+
+
+        flush=True
+
+
+
+    )
+
+
+
+
+
+
+
+    return results, elapsed
+
+
+
+
+
+
 
 
 
@@ -1506,524 +3012,1049 @@ def retrieve_search_results(
 
 def build_rag_prompt(
 
-    question,
 
-    language,
 
-    results
+    question,
+
+
+
+    language,
+
+
+
+    results
+
+
 
 ):
 
-    context_parts = []
 
-    sources = []
 
+    context_parts = []
 
 
-    for result in results:
 
-        metadata = (
+    sources = []
 
-            result.get("metadata")
 
-            or {}
 
-        )
 
 
 
-        text = (
 
-            result.get("text")
+    for result in results:
 
-            or ""
 
-        )
 
+        metadata = (
 
 
-        # Your current upload chunks are about 700 chars.
 
-        # This safety cap prevents unusually large permanent
+            result.get("metadata")
 
-        # knowledge-base chunks from making the AI prompt huge.
 
-        prompt_text = text[:1200]
 
+            or {}
 
 
-        source = metadata.get(
 
-            "source",
+        )
 
-            "Unknown"
 
-        )
 
 
 
-        category = metadata.get(
 
-            "category",
 
-            "general"
+        text = (
 
-        )
 
 
+            result.get("text")
 
-        page = metadata.get(
 
-            "page",
 
-            "Unknown"
+            or ""
 
-        )
 
 
+        )
 
-        chunk = metadata.get(
 
-            "chunk",
 
-            "Unknown"
 
-        )
 
 
 
-        context_parts.append(
+        # Your current upload chunks are about 700 chars.
 
-            f"Document: {source}\n"
 
-            f"Category: {category}\n"
 
-            f"Page: {page}\n"
+        # This safety cap prevents unusually large permanent
 
-            f"Chunk: {chunk}\n"
 
-            f"Content:\n{prompt_text}"
 
-        )
+        # knowledge-base chunks from making the AI prompt huge.
 
 
 
-        # Keep the complete retrieved chunk for the UI source card.
+        prompt_text = text[:1200]
 
-        sources.append(
 
-            {
 
-                "source": source,
 
-                "category": category,
 
-                "page": page,
 
-                "chunk": chunk,
 
-                "text": text,
+        source = metadata.get(
 
-                "uploaded": bool(
 
-                    metadata.get(
 
-                        "uploaded",
+            "source",
 
-                        False
 
-                    )
 
-                ),
+            "Unknown"
 
-                "distance": result.get(
 
-                    "distance"
 
-                ),
+        )
 
-                "relevance_score": result.get(
 
-                    "relevance_score"
 
-                )
 
-            }
 
-        )
 
 
+        category = metadata.get(
 
-    context = (
 
-        "\n\n---\n\n"
 
-        .join(context_parts)
+            "category",
 
-    )
 
 
+            "general"
 
-    language = normalize_language(language)
 
-    language_instruction = get_language_instruction(
-        language
-    )
 
-    prompt = f"""
+        )
 
-You are AyurSetu AI.
+
+
+
+
+
+
+        page = metadata.get(
+
+
+
+            "page",
+
+
+
+            "Unknown"
+
+
+
+        )
+
+
+
+
+
+
+
+        chunk = metadata.get(
+
+
+
+            "chunk",
+
+
+
+            "Unknown"
+
+
+
+        )
+
+
+
+
+
+
+
+        context_parts.append(
+
+
+
+            f"Document: {source}\n"
+
+
+
+            f"Category: {category}\n"
+
+
+
+            f"Page: {page}\n"
+
+
+
+            f"Chunk: {chunk}\n"
+
+
+
+            f"Content:\n{prompt_text}"
+
+
+
+        )
+
+
+
+
+
+
+
+        # Keep the complete retrieved chunk for the UI source card.
+
+
+
+        sources.append(
+
+
+
+            {
+
+
+
+                "source": source,
+
+
+
+                "category": category,
+
+
+
+                "page": page,
+
+
+
+                "chunk": chunk,
+
+
+
+                "text": text,
+
+
+
+                "uploaded": bool(
+
+
+
+                    metadata.get(
+
+
+
+                        "uploaded",
+
+
+
+                        False
+
+
+
+                    )
+
+
+
+                ),
+
+
+
+                "distance": result.get(
+
+
+
+                    "distance"
+
+
+
+                ),
+
+
+
+                "relevance_score": result.get(
+
+
+
+                    "relevance_score"
+
+
+
+                )
+
+
+
+            }
+
+
+
+        )
+
+
+
+
+
+
+
+    context = (
+
+
+
+        "\n\n---\n\n"
+
+
+
+        .join(context_parts)
+
+
+
+    )
+
+
+
+
+
+
+
+    language = normalize_language(language)
+
+
+
+    language_instruction = get_language_instruction(
+
+        language
+
+    )
+
+
+
+    prompt = f"""
+
+
+
+You are AyurSetu Agentic RAG.
+
+
+
+
 
 
 
 You are a multilingual educational assistant for
 
+
+
 Intellectual Property, Ayurveda and Traditional Knowledge.
+
+
+
+
 
 
 
 Answer the user's question using ONLY the retrieved
 
+
+
 information supplied below.
+
+
+
+
 
 
 
 OUTPUT LANGUAGE:
 
+
+
 Selected language: {language}
+
+
 
 {language_instruction}
 
+
+
 The retrieved context may be in English or another language.
+
 Translate ONLY the retrieved information into the selected output
+
 language without changing its factual meaning.
+
+
+
+
 
 
 
 STRICT RULES:
 
-1\. Use only information from the retrieved documents.
 
 
+1\\. Use only information from the retrieved documents.
 
-2\. Do not add unsupported facts from your own knowledge.
 
 
 
-3\. Give a detailed, comprehensive and educational answer.
 
 
 
-4\. Prefer paragraph-based explanation over a list-only answer.
+2\\. Do not add unsupported facts from your own knowledge.
 
 
 
-5\. When the retrieved information is sufficient, write approximately
 
-   4 to 7 meaningful paragraphs. Each paragraph should explain a
 
-   different aspect of the topic.
 
 
+3\\. Give a detailed, comprehensive and educational answer.
 
-6\. Begin with a clear definition or introduction.
 
 
 
-7\. Then explain the relevant aspects supported by the retrieved
 
-   documents, such as:
 
-   - purpose or objective
 
-   - background
+4\\. Prefer paragraph-based explanation over a list-only answer.
 
-   - important features
 
-   - requirements or eligibility
 
-   - procedure or process
 
-   - scope
 
-   - rights or effects
 
-   - advantages
 
-   - limitations
+5\\. When the retrieved information is sufficient, write approximately
 
-   - important provisions
 
-   Include only the aspects actually supported by the retrieved context.
 
+   4 to 7 meaningful paragraphs. Each paragraph should explain a
 
 
-8\. Use headings and subheadings to organize longer answers.
 
+   different aspect of the topic.
 
 
-9\. Bullet points may be used for key points, features, requirements,
 
-   advantages or steps, but do not present the entire answer only as
 
-   bullet points when enough material exists for paragraph explanation.
 
 
 
-10\. After an important bullet list, add a short explanatory paragraph
+6\\. Begin with a clear definition or introduction.
 
-    when the retrieved context supports it.
 
 
 
-11\. For short definition questions, still give a useful explanation
 
-    rather than only one sentence.
 
 
+7\\. Then explain the relevant aspects supported by the retrieved
 
-12\. Do not artificially make an answer long by repeating the same
 
-    information. Prefer useful detail over repetition.
 
+   documents, such as:
 
 
-13\. Use natural Unicode for English, Bengali and Hindi.
 
+   - purpose or objective
 
 
-14\. Use Markdown formatting naturally.
 
+   - background
 
 
-15\. Do not invent laws, sections, treaty dates, legal requirements,
 
-    medical claims, patent requirements or regulatory requirements.
+   - important features
 
 
 
-16\. If the retrieved context is insufficient for a detailed answer,
+   - requirements or eligibility
 
-    clearly state that limitation instead of adding outside knowledge.
 
 
+   - procedure or process
 
-17\. Add the sentence
 
-    "*This explanation is for educational purposes and is not legal advice.*"
 
-    only when the question asks about a specific legal decision,
+   - scope
 
-    filing strategy, infringement, legal eligibility, legal risk,
 
-    or what the user should legally do. Do not automatically add it
 
-    to simple educational definition questions.
+   - rights or effects
+
+
+
+   - advantages
+
+
+
+   - limitations
+
+
+
+   - important provisions
+
+
+
+   Include only the aspects actually supported by the retrieved context.
+
+
+
+
+
+
+
+8\\. Use headings and subheadings to organize longer answers.
+
+
+
+
+
+
+
+9\\. Bullet points may be used for key points, features, requirements,
+
+
+
+   advantages or steps, but do not present the entire answer only as
+
+
+
+   bullet points when enough material exists for paragraph explanation.
+
+
+
+
+
+
+
+10\\. After an important bullet list, add a short explanatory paragraph
+
+
+
+    when the retrieved context supports it.
+
+
+
+
+
+
+
+11\\. For short definition questions, still give a useful explanation
+
+
+
+    rather than only one sentence.
+
+
+
+
+
+
+
+12\\. Do not artificially make an answer long by repeating the same
+
+
+
+    information. Prefer useful detail over repetition.
+
+
+
+
+
+
+
+13\\. Use natural Unicode for English, Bengali and Hindi.
+
+
+
+
+
+
+
+14\\. Use Markdown formatting naturally.
+
+
+
+
+
+
+
+15\\. Do not invent laws, sections, treaty dates, legal requirements,
+
+
+
+    medical claims, patent requirements or regulatory requirements.
+
+
+
+
+
+
+
+16\\. If the retrieved context is insufficient for a detailed answer,
+
+
+
+    clearly state that limitation instead of adding outside knowledge.
+
+
+
+
+
+
+
+17\\. Add the sentence
+
+
+
+    "\*This explanation is for educational purposes and is not legal advice.\*"
+
+
+
+    only when the question asks about a specific legal decision,
+
+
+
+    filing strategy, infringement, legal eligibility, legal risk,
+
+
+
+    or what the user should legally do. Do not automatically add it
+
+
+
+    to simple educational definition questions.
+
+
+
+
 
 
 
 USER QUESTION:
 
+
+
 {question}
+
+
+
+
 
 
 
 RETRIEVED CONTEXT:
 
+
+
 {context}
+
+
 
 """
 
 
 
-    return prompt, sources
+
+
+
+
+    return prompt, sources
+
+
+
+
+
+
 
 
 
 
 
 def generate_rag_answer(
-    prompt,
-    language="English"
-):
-    started = time.perf_counter()
 
-    language = normalize_language(language)
+    prompt,
 
-    gemini_result = generate_with_gemini(prompt)
-
-    if (
-        gemini_result.get("success")
-        and not answer_matches_language(
-            gemini_result.get("answer", ""),
-            language
-        )
-    ):
-        retry_prompt = (
-            prompt
-            + "\n\nFINAL LANGUAGE CHECK:\n"
-            + get_language_instruction(language)
-            + "\nRewrite the complete answer now in the selected language. "
-              "Do not add any new facts."
-        )
-
-        retry_result = generate_with_gemini(retry_prompt)
-
-        if (
-            retry_result.get("success")
-            and answer_matches_language(
-                retry_result.get("answer", ""),
-                language
-            )
-        ):
-            gemini_result = retry_result
-
-    gemini_elapsed = round(
-        time.perf_counter() - started,
-        3
-    )
-
-    print(
-        f"Gemini response time: {gemini_elapsed} seconds",
-        flush=True
-    )
-
-    if (
-        gemini_result.get("success")
-        and answer_matches_language(
-            gemini_result.get("answer", ""),
-            language
-        )
-    ):
-        return (
-            gemini_result,
-            gemini_elapsed,
-            None
-        )
-
-    groq_started = time.perf_counter()
-
-    groq_prompt = (
-        prompt
-        + "\n\nFINAL LANGUAGE CHECK:\n"
-        + get_language_instruction(language)
-    )
-
-    groq_result = generate_with_groq(groq_prompt)
-
-    groq_elapsed = round(
-        time.perf_counter() - groq_started,
-        3
-    )
-
-    print(
-        f"Groq response time: {groq_elapsed} seconds",
-        flush=True
-    )
-
-    if (
-        groq_result.get("success")
-        and answer_matches_language(
-            groq_result.get("answer", ""),
-            language
-        )
-    ):
-        return (
-            groq_result,
-            groq_elapsed,
-            gemini_result.get("error")
-        )
-
-    return (
-        {
-            "success": False,
-            "provider": "None",
-            "error": (
-                "Both AI providers failed to generate "
-                f"a valid {language} answer."
-            ),
-            "gemini_error": gemini_result.get("error"),
-            "groq_error": groq_result.get("error")
-        },
-        groq_elapsed,
-        gemini_result.get("error")
-    )
-
-def _cached_response(
-
-    cache_result,
-
-    question,
-
-    language,
-
-    started
+    language="English"
 
 ):
 
-    response = dict(
-
-        cache_result["response"]
-
-    )
+    started = time.perf_counter()
 
 
 
-    # Preserve the new question text for semantically similar queries.
-
-    response["question"] = question
-
-    response["language"] = language
-
-    response["provider"] = "Cache"
-
-    response["cache_hit"] = True
-
-    response["cache_type"] = cache_result["type"]
-
-    response["cache_similarity"] = cache_result["similarity"]
+    language = normalize_language(language)
 
 
 
-    total_seconds = round(
-
-        time.perf_counter() - started,
-
-        3
-
-    )
+    gemini_result = generate_with_gemini(prompt)
 
 
 
-    response["timing"] = {
+    if (
 
-        "search_seconds": total_seconds,
+        gemini_result.get("success")
 
-        "ai_seconds": 0,
+        and not answer_matches_language(
 
-        "total_seconds": total_seconds
+            gemini_result.get("answer", ""),
 
-    }
+            language
+
+        )
+
+    ):
+
+        retry_prompt = (
+
+            prompt
+
+            + "\n\nFINAL LANGUAGE CHECK:\n"
+
+            + get_language_instruction(language)
+
+            + "\nRewrite the complete answer now in the selected language. "
+
+              "Do not add any new facts."
+
+        )
 
 
 
-    print(
-
-        f"RAG cache hit: "
-
-        f"{cache_result['type']} "
-
-        f"similarity={cache_result['similarity']} "
-
-        f"time={total_seconds}s",
-
-        flush=True
-
-    )
+        retry_result = generate_with_gemini(retry_prompt)
 
 
 
-    return response
+        if (
+
+            retry_result.get("success")
+
+            and answer_matches_language(
+
+                retry_result.get("answer", ""),
+
+                language
+
+            )
+
+        ):
+
+            gemini_result = retry_result
+
+
+
+    gemini_elapsed = round(
+
+        time.perf_counter() - started,
+
+        3
+
+    )
+
+
+
+    print(
+
+        f"Gemini response time: {gemini_elapsed} seconds",
+
+        flush=True
+
+    )
+
+
+
+    if (
+
+        gemini_result.get("success")
+
+        and answer_matches_language(
+
+            gemini_result.get("answer", ""),
+
+            language
+
+        )
+
+    ):
+
+        return (
+
+            gemini_result,
+
+            gemini_elapsed,
+
+            None
+
+        )
+
+
+
+    groq_started = time.perf_counter()
+
+
+
+    groq_prompt = (
+
+        prompt
+
+        + "\n\nFINAL LANGUAGE CHECK:\n"
+
+        + get_language_instruction(language)
+
+    )
+
+
+
+    groq_result = generate_with_groq(groq_prompt)
+
+
+
+    groq_elapsed = round(
+
+        time.perf_counter() - groq_started,
+
+        3
+
+    )
+
+
+
+    print(
+
+        f"Groq response time: {groq_elapsed} seconds",
+
+        flush=True
+
+    )
+
+
+
+    if (
+
+        groq_result.get("success")
+
+        and answer_matches_language(
+
+            groq_result.get("answer", ""),
+
+            language
+
+        )
+
+    ):
+
+        return (
+
+            groq_result,
+
+            groq_elapsed,
+
+            gemini_result.get("error")
+
+        )
+
+
+
+    return (
+
+        {
+
+            "success": False,
+
+            "provider": "None",
+
+            "error": (
+
+                "Both AI providers failed to generate "
+
+                f"a valid {language} answer."
+
+            ),
+
+            "gemini_error": gemini_result.get("error"),
+
+            "groq_error": groq_result.get("error")
+
+        },
+
+        groq_elapsed,
+
+        gemini_result.get("error")
+
+    )
+
+
+
+def \_cached_response(
+
+
+
+    cache_result,
+
+
+
+    question,
+
+
+
+    language,
+
+
+
+    started
+
+
+
+):
+
+
+
+    response = dict(
+
+
+
+        cache_result["response"]
+
+
+
+    )
+
+
+
+
+
+
+
+    # Preserve the new question text for semantically similar queries.
+
+
+
+    response["question"] = question
+
+
+
+    response["language"] = language
+
+
+
+    response["provider"] = "Cache"
+
+
+
+    response["cache_hit"] = True
+
+
+
+    response["cache_type"] = cache_result["type"]
+
+
+
+    response["cache_similarity"] = cache_result["similarity"]
+
+
+
+
+
+
+
+    total_seconds = round(
+
+
+
+        time.perf_counter() - started,
+
+
+
+        3
+
+
+
+    )
+
+
+
+
+
+
+
+    response["timing"] = {
+
+
+
+        "search_seconds": total_seconds,
+
+
+
+        "ai_seconds": 0,
+
+
+
+        "total_seconds": total_seconds
+
+
+
+    }
+
+
+
+
+
+
+
+    print(
+
+
+
+        f"RAG cache hit: "
+
+
+
+        f"{cache_result['type']} "
+
+
+
+        f"similarity={cache_result['similarity']} "
+
+
+
+        f"time={total_seconds}s",
+
+
+
+        flush=True
+
+
+
+    )
+
+
+
+
+
+
+
+    return response
+
+
+
+
+
+
 
 
 
@@ -2031,361 +4062,723 @@ def _cached_response(
 
 def build_search_response(
 
-    question,
 
-    language
+
+    question,
+
+
+
+    language
+
+
 
 ):
 
-    request_started = time.perf_counter()
 
 
+    request_started = time.perf_counter()
 
-    # -----------------------------------------------------
 
-    # 1. Persistent exact cache lookup
 
-    # -----------------------------------------------------
 
-    # This requires no embedding, no Chroma query and no AI request.
 
-    exact_cache = get_exact_cache(
 
-        question,
 
-        language
+    # -----------------------------------------------------
 
-    )
 
 
+    # 1. Persistent exact cache lookup
 
-    if exact_cache:
 
-        return _cached_response(
 
-            exact_cache,
+    # -----------------------------------------------------
 
-            question,
 
-            language,
 
-            request_started
+    # This requires no embedding, no Chroma query and no AI request.
 
-        )
 
 
+    exact_cache = get_exact_cache(
 
-    # -----------------------------------------------------
 
-    # 2. Compute the query embedding once
 
-    # -----------------------------------------------------
+        question,
 
-    embedding_started = time.perf_counter()
 
 
+        language
 
-    query_embedding = create_query_embedding(
 
-        question
 
-    )
+    )
 
 
 
-    embedding_seconds = round(
 
-        time.perf_counter()
 
-        - embedding_started,
 
-        3
 
-    )
+    if exact_cache:
 
 
 
-    # -----------------------------------------------------
+        return \_cached_response(
 
-    # 3. Persistent semantic cache lookup
 
-    # -----------------------------------------------------
 
-    semantic_cache = get_semantic_cache(
+            exact_cache,
 
-        question,
 
-        language,
 
-        query_embedding
+            question,
 
-    )
 
 
+            language,
 
-    if semantic_cache:
 
-        return _cached_response(
 
-            semantic_cache,
+            request_started
 
-            question,
 
-            language,
 
-            request_started
+        )
 
-        )
 
 
 
-    # -----------------------------------------------------
 
-    # 4. RAG search using the SAME query embedding
 
-    # -----------------------------------------------------
 
-    results, chroma_seconds = (
+    # -----------------------------------------------------
 
-        retrieve_search_results(
 
-            question,
 
-            query_embedding=query_embedding,
+    # 2. Compute the query embedding once
 
-            top_k=6,
 
-            final_results=4
 
-        )
+    # -----------------------------------------------------
 
-    )
 
 
+    embedding_started = time.perf_counter()
 
-    search_seconds = round(
 
-        embedding_seconds
 
-        + chroma_seconds,
 
-        3
 
-    )
 
 
+    query_embedding = create_query_embedding(
 
-    if not results:
 
-        return {
 
-            "question": question,
+        question
 
-            "language": language,
 
-            "answer":
 
-                "No relevant information "
+    )
 
-                "was found in the "
 
-                "knowledge base.",
 
-            "provider": "None",
 
-            "sources": [],
 
-            "cache_hit": False,
 
-            "timing": {
 
-                "search_seconds":
+    embedding_seconds = round(
 
-                    search_seconds,
 
-                "ai_seconds": 0,
 
-                "total_seconds":
+        time.perf_counter()
 
-                    round(
 
-                        time.perf_counter()
 
-                        - request_started,
+        - embedding_started,
 
-                        3
 
-                    )
 
-            }
+        3
 
-        }
 
 
+    )
 
-    prompt, sources = build_rag_prompt(
 
-        question,
 
-        language,
 
-        results
 
-    )
 
 
+    # -----------------------------------------------------
 
-    final_result, ai_seconds, gemini_error = (
 
-        generate_rag_answer(
 
-            prompt
+    # 3. Persistent semantic cache lookup
 
-        )
 
-    )
 
+    # -----------------------------------------------------
 
 
-    if not final_result.get(
 
-        "success"
+    semantic_cache = get_semantic_cache(
 
-    ):
 
-        return {
 
-            "question": question,
+        question,
 
-            "language": language,
 
-            "error":
 
-                "Both AI providers failed.",
+        language,
 
-            "gemini_error":
 
-                final_result.get(
 
-                    "gemini_error"
+        query_embedding
 
-                )
 
-                or gemini_error,
 
-            "groq_error":
+    )
 
-                final_result.get(
 
-                    "groq_error"
 
-                ),
 
-            "sources": sources,
 
-            "cache_hit": False,
 
-            "timing": {
 
-                "search_seconds":
+    if semantic_cache:
 
-                    search_seconds,
 
-                "ai_seconds":
 
-                    ai_seconds,
+        return \_cached_response(
 
-                "total_seconds":
 
-                    round(
 
-                        time.perf_counter()
+            semantic_cache,
 
-                        - request_started,
 
-                        3
 
-                    )
+            question,
 
-            }
 
-        }
 
+            language,
 
 
-    response = {
 
-        "question": question,
+            request_started
 
-        "language": language,
 
-        "answer": final_result.get(
 
-            "answer",
+        )
 
-            ""
 
-        ),
 
-        "provider": final_result.get(
 
-            "provider",
 
-            "Unknown"
 
-        ),
 
-        "sources": sources,
+    # -----------------------------------------------------
 
-        "cache_hit": False,
 
-        "timing": {
 
-            "search_seconds":
+    # 4. RAG search using the SAME query embedding
 
-                search_seconds,
 
-            "ai_seconds":
 
-                ai_seconds,
+    # -----------------------------------------------------
 
-            "total_seconds":
 
-                round(
 
-                    time.perf_counter()
+    results, chroma_seconds = (
 
-                    - request_started,
 
-                    3
 
-                )
+        retrieve_search_results(
 
-        }
 
-    }
 
+            question,
 
 
-    # Persist successful result for exact and high-confidence
 
-    # semantic reuse after Railway restarts.
+            query_embedding=query_embedding,
 
-    save_cache_entry(
 
-        question,
 
-        language,
+            top_k=6,
 
-        query_embedding,
 
-        response
 
-    )
+            final_results=4
 
 
 
-    return response
+        )
+
+
+
+    )
+
+
+
+
+
+
+
+    search_seconds = round(
+
+
+
+        embedding_seconds
+
+
+
+        + chroma_seconds,
+
+
+
+        3
+
+
+
+    )
+
+
+
+
+
+
+
+    if not results:
+
+
+
+        return {
+
+
+
+            "question": question,
+
+
+
+            "language": language,
+
+
+
+            "answer":
+
+
+
+                "No relevant information "
+
+
+
+                "was found in the "
+
+
+
+                "knowledge base.",
+
+
+
+            "provider": "None",
+
+
+
+            "sources": [],
+
+
+
+            "cache_hit": False,
+
+
+
+            "timing": {
+
+
+
+                "search_seconds":
+
+
+
+                    search_seconds,
+
+
+
+                "ai_seconds": 0,
+
+
+
+                "total_seconds":
+
+
+
+                    round(
+
+
+
+                        time.perf_counter()
+
+
+
+                        - request_started,
+
+
+
+                        3
+
+
+
+                    )
+
+
+
+            }
+
+
+
+        }
+
+
+
+
+
+
+
+    prompt, sources = build_rag_prompt(
+
+
+
+        question,
+
+
+
+        language,
+
+
+
+        results
+
+
+
+    )
+
+
+
+
+
+
+
+    final_result, ai_seconds, gemini_error = (
+
+
+
+        generate_rag_answer(
+
+
+
+            prompt
+
+
+
+        )
+
+
+
+    )
+
+
+
+
+
+
+
+    if not final_result.get(
+
+
+
+        "success"
+
+
+
+    ):
+
+
+
+        return {
+
+
+
+            "question": question,
+
+
+
+            "language": language,
+
+
+
+            "error":
+
+
+
+                "Both AI providers failed.",
+
+
+
+            "gemini_error":
+
+
+
+                final_result.get(
+
+
+
+                    "gemini_error"
+
+
+
+                )
+
+
+
+                or gemini_error,
+
+
+
+            "groq_error":
+
+
+
+                final_result.get(
+
+
+
+                    "groq_error"
+
+
+
+                ),
+
+
+
+            "sources": sources,
+
+
+
+            "cache_hit": False,
+
+
+
+            "timing": {
+
+
+
+                "search_seconds":
+
+
+
+                    search_seconds,
+
+
+
+                "ai_seconds":
+
+
+
+                    ai_seconds,
+
+
+
+                "total_seconds":
+
+
+
+                    round(
+
+
+
+                        time.perf_counter()
+
+
+
+                        - request_started,
+
+
+
+                        3
+
+
+
+                    )
+
+
+
+            }
+
+
+
+        }
+
+
+
+
+
+
+
+    response = {
+
+
+
+        "question": question,
+
+
+
+        "language": language,
+
+
+
+        "answer": final_result.get(
+
+
+
+            "answer",
+
+
+
+            ""
+
+
+
+        ),
+
+
+
+        "provider": final_result.get(
+
+
+
+            "provider",
+
+
+
+            "Unknown"
+
+
+
+        ),
+
+
+
+        "sources": sources,
+
+
+
+        "cache_hit": False,
+
+
+
+        "timing": {
+
+
+
+            "search_seconds":
+
+
+
+                search_seconds,
+
+
+
+            "ai_seconds":
+
+
+
+                ai_seconds,
+
+
+
+            "total_seconds":
+
+
+
+                round(
+
+
+
+                    time.perf_counter()
+
+
+
+                    - request_started,
+
+
+
+                    3
+
+
+
+                )
+
+
+
+        }
+
+
+
+    }
+
+
+
+
+
+
+
+    # Persist successful result for exact and high-confidence
+
+
+
+    # semantic reuse after Railway restarts.
+
+
+
+    save_cache_entry(
+
+
+
+        question,
+
+
+
+        language,
+
+
+
+        query_embedding,
+
+
+
+        response
+
+
+
+    )
+
+
+
+
+
+
+
+    return response
+
+
+
+
+
+
 
 
 
@@ -2393,60 +4786,121 @@ def build_search_response(
 
 @app.post("/api/search")
 
+
+
 def search(
 
-    request: ChatRequest
+
+
+    request: ChatRequest
+
+
 
 ):
 
-    """
 
-    Existing non-streaming endpoint.
 
-    Kept for compatibility with any older frontend/client.
-
-    """
-
-    question = (
-
-        request.question
-
-        or ""
-
-    ).strip()
+    """
 
 
 
-    if not question:
-
-        return {
-
-            "error":
-
-                "Question cannot be empty."
-
-        }
+    Existing non-streaming endpoint.
 
 
 
-    language = normalize_language(
-        request.language
-    )
+    Kept for compatibility with any older frontend/client.
 
 
 
-    print(
-        f"Selected API language: {language}",
-        flush=True
-    )
+    """
 
-    return build_search_response(
 
-        question,
 
-        language
+    question = (
 
-    )
+
+
+        request.question
+
+
+
+        or ""
+
+
+
+    ).strip()
+
+
+
+
+
+
+
+    if not question:
+
+
+
+        return {
+
+
+
+            "error":
+
+
+
+                "Question cannot be empty."
+
+
+
+        }
+
+
+
+
+
+
+
+    language = normalize_language(
+
+        request.language
+
+    )
+
+
+
+
+
+
+
+    print(
+
+        f"Selected API language: {language}",
+
+        flush=True
+
+    )
+
+
+
+    return build_search_response(
+
+
+
+        question,
+
+
+
+        language
+
+
+
+    )
+
+
+
+
+
+
 
 
 
@@ -2454,438 +4908,874 @@ def search(
 
 @app.post("/api/search-stream")
 
+
+
 def search_stream(
 
-    request: ChatRequest
+
+
+    request: ChatRequest
+
+
 
 ):
 
-    """
 
-    Sends small JSON-line progress events so the frontend can
 
-    show the actual stage:
+    """
 
-      1. searching
 
-      2. generating
 
-      3. final result
+    Sends small JSON-line progress events so the frontend can
 
-    """
 
 
+    show the actual stage:
 
-    question = (
 
-        request.question
 
-        or ""
+      1. searching
 
-    ).strip()
 
 
+      2. generating
 
-    language = normalize_language(
-        request.language
-    )
 
 
+      3. final result
 
-    def send_event(payload):
 
-        return (
 
-            json.dumps(
+    """
 
-                payload,
 
-                ensure_ascii=False
 
-            )
 
-            + "\n"
 
-        )
 
 
+    question = (
 
-    def event_generator():
 
-        if not question:
 
-            yield send_event(
+        request.question
 
-                {
 
-                    "type": "result",
 
-                    "data": {
+        or ""
 
-                        "error":
 
-                            "Question cannot be empty."
 
-                    }
+    ).strip()
 
-                }
 
-            )
 
-            return
 
 
 
-        try:
 
-            yield send_event(
+    language = normalize_language(
 
-                {
+        request.language
 
-                    "type": "stage",
+    )
 
-                    "stage": "searching",
 
-                    "message":
 
-                        "Searching knowledge base..."
 
-                }
 
-            )
 
 
+    def send_event(payload):
 
-            results, search_seconds = (
 
-                retrieve_search_results(
 
-                    question,
+        return (
 
-                    top_k=5,
 
-                    final_results=3
 
-                )
+            json.dumps(
 
-            )
 
 
+                payload,
 
-            if not results:
 
-                yield send_event(
 
-                    {
+                ensure_ascii=False
 
-                        "type": "result",
 
-                        "data": {
 
-                            "question":
+            )
 
-                                question,
 
-                            "language":
 
-                                language,
+            + "\n"
 
-                            "answer":
 
-                                "No relevant information "
 
-                                "was found in the "
+        )
 
-                                "knowledge base.",
 
-                            "provider":
 
-                                "None",
 
-                            "sources":
 
-                                [],
 
-                            "timing": {
 
-                                "search_seconds":
+    def event_generator():
 
-                                    search_seconds,
 
-                                "ai_seconds":
 
-                                    0,
+        if not question:
 
-                                "total_seconds":
 
-                                    search_seconds
 
-                            }
+            yield send_event(
 
-                        }
 
-                    }
 
-                )
+                {
 
-                return
 
 
+                    "type": "result",
 
-            prompt, sources = (
 
-                build_rag_prompt(
 
-                    question,
+                    "data": {
 
-                    language,
 
-                    results
 
-                )
+                        "error":
 
-            )
 
 
+                            "Question cannot be empty."
 
-            yield send_event(
 
-                {
 
-                    "type": "stage",
+                    }
 
-                    "stage": "generating",
 
-                    "message":
 
-                        "Relevant sources found. "
+                }
 
-                        "Generating answer...",
 
-                    "search_seconds":
 
-                        search_seconds
+            )
 
-                }
 
-            )
 
+            return
 
 
-            final_result, ai_seconds, gemini_error = (
 
-                generate_rag_answer(
 
-                    prompt
 
-                )
 
-            )
 
+        try:
 
 
-            if not final_result.get(
 
-                "success"
+            yield send_event(
 
-            ):
 
-                payload = {
 
-                    "question":
+                {
 
-                        question,
 
-                    "language":
 
-                        language,
+                    "type": "stage",
 
-                    "error":
 
-                        "Both AI providers failed.",
 
-                    "gemini_error":
+                    "stage": "searching",
 
-                        final_result.get(
 
-                            "gemini_error"
 
-                        )
+                    "message":
 
-                        or gemini_error,
 
-                    "groq_error":
 
-                        final_result.get(
+                        "Searching knowledge base..."
 
-                            "groq_error"
 
-                        ),
 
-                    "sources":
+                }
 
-                        sources,
 
-                    "timing": {
 
-                        "search_seconds":
+            )
 
-                            search_seconds,
 
-                        "ai_seconds":
 
-                            ai_seconds,
 
-                        "total_seconds":
 
-                            round(
 
-                                search_seconds
 
-                                + ai_seconds,
+            results, search_seconds = (
 
-                                3
 
-                            )
 
-                    }
+                retrieve_search_results(
 
-                }
 
 
+                    question,
 
-            else:
 
-                payload = {
 
-                    "question":
+                    top_k=5,
 
-                        question,
 
-                    "language":
 
-                        language,
+                    final_results=3
 
-                    "answer":
 
-                        final_result.get(
 
-                            "answer",
+                )
 
-                            ""
 
-                        ),
 
-                    "provider":
+            )
 
-                        final_result.get(
 
-                            "provider",
 
-                            "Unknown"
 
-                        ),
 
-                    "sources":
 
-                        sources,
 
-                    "timing": {
+            if not results:
 
-                        "search_seconds":
 
-                            search_seconds,
 
-                        "ai_seconds":
+                yield send_event(
 
-                            ai_seconds,
 
-                        "total_seconds":
 
-                            round(
+                    {
 
-                                search_seconds
 
-                                + ai_seconds,
 
-                                3
+                        "type": "result",
 
-                            )
 
-                    }
 
-                }
+                        "data": {
 
 
 
-            yield send_event(
+                            "question":
 
-                {
 
-                    "type": "result",
 
-                    "data": payload
+                                question,
 
-                }
 
-            )
 
+                            "language":
 
 
-        except Exception as error:
 
-            print(
+                                language,
 
-                "Streaming search error:",
 
-                repr(error),
 
-                flush=True
+                            "answer":
 
-            )
 
 
+                                "No relevant information "
 
-            yield send_event(
 
-                {
 
-                    "type": "result",
+                                "was found in the "
 
-                    "data": {
 
-                        "error":
 
-                            f"Search failed: {error}"
+                                "knowledge base.",
 
-                    }
 
-                }
 
-            )
+                            "provider":
 
 
 
-    return StreamingResponse(
+                                "None",
 
-        event_generator(),
 
-        media_type=
 
-            "application/x-ndjson",
+                            "sources":
 
-        headers={
 
-            "Cache-Control":
 
-                "no-cache",
+                                [],
 
-            "X-Accel-Buffering":
 
-                "no"
 
-        }
+                            "timing": {
 
-    )
+
+
+                                "search_seconds":
+
+
+
+                                    search_seconds,
+
+
+
+                                "ai_seconds":
+
+
+
+                                    0,
+
+
+
+                                "total_seconds":
+
+
+
+                                    search_seconds
+
+
+
+                            }
+
+
+
+                        }
+
+
+
+                    }
+
+
+
+                )
+
+
+
+                return
+
+
+
+
+
+
+
+            prompt, sources = (
+
+
+
+                build_rag_prompt(
+
+
+
+                    question,
+
+
+
+                    language,
+
+
+
+                    results
+
+
+
+                )
+
+
+
+            )
+
+
+
+
+
+
+
+            yield send_event(
+
+
+
+                {
+
+
+
+                    "type": "stage",
+
+
+
+                    "stage": "generating",
+
+
+
+                    "message":
+
+
+
+                        "Relevant sources found. "
+
+
+
+                        "Generating answer...",
+
+
+
+                    "search_seconds":
+
+
+
+                        search_seconds
+
+
+
+                }
+
+
+
+            )
+
+
+
+
+
+
+
+            final_result, ai_seconds, gemini_error = (
+
+
+
+                generate_rag_answer(
+
+
+
+                    prompt
+
+
+
+                )
+
+
+
+            )
+
+
+
+
+
+
+
+            if not final_result.get(
+
+
+
+                "success"
+
+
+
+            ):
+
+
+
+                payload = {
+
+
+
+                    "question":
+
+
+
+                        question,
+
+
+
+                    "language":
+
+
+
+                        language,
+
+
+
+                    "error":
+
+
+
+                        "Both AI providers failed.",
+
+
+
+                    "gemini_error":
+
+
+
+                        final_result.get(
+
+
+
+                            "gemini_error"
+
+
+
+                        )
+
+
+
+                        or gemini_error,
+
+
+
+                    "groq_error":
+
+
+
+                        final_result.get(
+
+
+
+                            "groq_error"
+
+
+
+                        ),
+
+
+
+                    "sources":
+
+
+
+                        sources,
+
+
+
+                    "timing": {
+
+
+
+                        "search_seconds":
+
+
+
+                            search_seconds,
+
+
+
+                        "ai_seconds":
+
+
+
+                            ai_seconds,
+
+
+
+                        "total_seconds":
+
+
+
+                            round(
+
+
+
+                                search_seconds
+
+
+
+                                + ai_seconds,
+
+
+
+                                3
+
+
+
+                            )
+
+
+
+                    }
+
+
+
+                }
+
+
+
+
+
+
+
+            else:
+
+
+
+                payload = {
+
+
+
+                    "question":
+
+
+
+                        question,
+
+
+
+                    "language":
+
+
+
+                        language,
+
+
+
+                    "answer":
+
+
+
+                        final_result.get(
+
+
+
+                            "answer",
+
+
+
+                            ""
+
+
+
+                        ),
+
+
+
+                    "provider":
+
+
+
+                        final_result.get(
+
+
+
+                            "provider",
+
+
+
+                            "Unknown"
+
+
+
+                        ),
+
+
+
+                    "sources":
+
+
+
+                        sources,
+
+
+
+                    "timing": {
+
+
+
+                        "search_seconds":
+
+
+
+                            search_seconds,
+
+
+
+                        "ai_seconds":
+
+
+
+                            ai_seconds,
+
+
+
+                        "total_seconds":
+
+
+
+                            round(
+
+
+
+                                search_seconds
+
+
+
+                                + ai_seconds,
+
+
+
+                                3
+
+
+
+                            )
+
+
+
+                    }
+
+
+
+                }
+
+
+
+
+
+
+
+            yield send_event(
+
+
+
+                {
+
+
+
+                    "type": "result",
+
+
+
+                    "data": payload
+
+
+
+                }
+
+
+
+            )
+
+
+
+
+
+
+
+        except Exception as error:
+
+
+
+            print(
+
+
+
+                "Streaming search error:",
+
+
+
+                repr(error),
+
+
+
+                flush=True
+
+
+
+            )
+
+
+
+
+
+
+
+            yield send_event(
+
+
+
+                {
+
+
+
+                    "type": "result",
+
+
+
+                    "data": {
+
+
+
+                        "error":
+
+
+
+                            f"Search failed: {error}"
+
+
+
+                    }
+
+
+
+                }
+
+
+
+            )
+
+
+
+
+
+
+
+    return StreamingResponse(
+
+
+
+        event_generator(),
+
+
+
+        media_type=
+
+
+
+            "application/x-ndjson",
+
+
+
+        headers={
+
+
+
+            "Cache-Control":
+
+
+
+                "no-cache",
+
+
+
+            "X-Accel-Buffering":
+
+
+
+                "no"
+
+
+
+        }
+
+
+
+    )
+
+
 
 
